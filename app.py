@@ -1,19 +1,12 @@
-import streamlit as st
+kimport streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import os
 from io import BytesIO
 
-# Configuração da Página
-st.set_page_config(
-    page_title="Plataforma Edáfica Universal",
-    page_icon="🌱",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Plataforma Edáfica", page_icon="🌱", layout="wide", initial_sidebar_state="expanded")
 
-# Estilização CSS para o Modo Escuro
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #ffffff; }
@@ -27,7 +20,6 @@ st.markdown("""
 ARQUIVO_BANCO = "banco_solo.csv"
 COLUNAS_ESPERADAS = ['Ambiente_Origem', 'ID_Parcela', 'pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
 
-# Inicialização ou autocorreção do banco de dados
 def inicializar_banco(forcar=False):
     if forcar or not os.path.exists(ARQUIVO_BANCO):
         np.random.seed(42)
@@ -52,12 +44,10 @@ except:
     inicializar_banco(forcar=True)
     df = pd.read_csv(ARQUIVO_BANCO)
 
-# --- INTERFACE ---
 st.title("🌱 Plataforma de Organização e Análise de Solo")
 st.subheader("Cadastro Livre de Amostras e Comparação de Ambientes")
 st.markdown("---")
 
-# BARRA LATERAL: Cadastro e Atualização
 st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
 with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
     novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
@@ -80,12 +70,10 @@ if botao_salvar:
             v_arg = float(input_argila.replace(',', '.'))
             v_mo = float(input_mo.replace(',', '.'))
             v_alt = float(input_altitude.replace(',', '.'))
-            
             if not (0 <= v_ph <= 14) or not (0 <= v_arg <= 100) or not (0 <= v_mo <= 100):
                 st.sidebar.error("Erro: Valores fora dos limites permitidos!")
             else:
                 existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
-                
                 if existe_registro:
                     idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
                     df.loc[idx, 'pH'] = np.round(v_ph, 2)
@@ -94,42 +82,33 @@ if botao_salvar:
                     df.loc[idx, 'Materia_Organica (%)'] = np.round(v_mo, 2)
                     df.loc[idx, 'Altitude (m)'] = np.round(v_alt, 1)
                 else:
-                    nova_linha = pd.DataFrame([{
-                        'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 
-                        'pH': np.round(v_ph, 2), 'Condutividade (µS/cm)': np.round(v_cond, 2), 
-                        'Argila (%)': np.round(v_arg, 2), 'Materia_Organica (%)': np.round(v_mo, 2), 'Altitude (m)': np.round(v_alt, 1)
-                    }])
+                    nova_linha = pd.DataFrame([{'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 'pH': np.round(v_ph, 2), 'Condutividade (µS/cm)': np.round(v_cond, 2), 'Argila (%)': np.round(v_arg, 2), 'Materia_Organica (%)': np.round(v_mo, 2), 'Altitude (m)': np.round(v_alt, 1)}])
                     df = pd.concat([df, nova_linha], ignore_index=True)
-                
                 df.to_csv(ARQUIVO_BANCO, index=False)
-                st.sidebar.success("Dados salvos com precisão!")
+                st.sidebar.success("Dados salvos!")
                 st.rerun()
         except ValueError:
             st.sidebar.error("Erro: Preencha apenas números válidos!")
 
-# BARRA LATERAL: Remoção de Múltiplas Parcelas
 st.sidebar.markdown("---")
 st.sidebar.header("🗑️ Remover Múltiplas Amostras")
 deletar_ambiente = st.sidebar.selectbox("1. Escolha o Ambiente:", [""] + list(df['Ambiente_Origem'].unique()))
 
 if deletar_ambiente != "":
     parcelas_disponiveis = df[df['Ambiente_Origem'] == deletar_ambiente]['ID_Parcela'].unique()
-    parcelas_selecionadas = st.sidebar.multiselect("2. Selecione as parcelas para deletar:", options=parcelas_disponiveis)
-    
-    if st.sidebar.button("❌ Excluir Permanentemente"):
+    parcelas_selecionadas = st.sidebar.multiselect("2. Selecione as parcelas:", options=parcelas_disponiveis)
+    if st.sidebar.button("❌ Excluir Selecionadas"):
         if not parcelas_selecionadas:
             st.sidebar.warning("Selecione pelo menos uma parcela!")
         else:
             df = df[~((df['Ambiente_Origem'] == deletar_ambiente) & (df['ID_Parcela'].isin(parcelas_selecionadas)))]
             df.to_csv(ARQUIVO_BANCO, index=False)
-            st.sidebar.success("Parcela(s) removida(s) com sucesso!")
+            st.sidebar.success("Removidas com sucesso!")
             st.rerun()
 
-# Seção de Créditos ao Desenvolvedor
 st.sidebar.markdown("---")
 st.sidebar.markdown("""<div class="dev-box"><strong style='color: #00e676; font-size: 14px;'>💻 DESENVOLVEDOR DO SISTEMA</strong><br><span style='font-size: 16px; font-weight: bold;'>Thiago Araújo de Vasconcelos</span><br><span style='color: #a3a8b4; font-size: 12px;'>Plataforma Edáfica de Análise Ecológica</span></div>""", unsafe_allow_html=True)
 
-# ABAS PRINCIPAIS
 aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Painel de Comparação Gráfica"])
 
 with aba_geral:
@@ -137,7 +116,6 @@ with aba_geral:
     ambientes_disponiveis = df['Ambiente_Origem'].unique() if not df.empty else ["NENHUM"]
     ambiente_sel = st.selectbox("Escolha o Ambiente:", ambientes_disponiveis)
     df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel] if not df.empty else pd.DataFrame()
-    
     col1, col2, col3, col4 = st.columns(4)
     if not df_filtrado.empty:
         col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
@@ -149,7 +127,6 @@ with aba_geral:
         col2.metric(label="Média de Condutividade", value="0.00")
         col3.metric(label="Teor Médio de Argila", value="0.00")
         col4.metric(label="Matéria Orgânica Média", value="0.00")
-    
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Dados_Solo')
@@ -159,7 +136,17 @@ with aba_geral:
 with aba_comparativo:
     st.write("### Análise Multivariada Comparativa de Propriedades")
     st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
-    
     if df.empty or len(df['Ambiente_Origem'].unique()) < 1:
-        st.info("Insira dados na barra lateral para liberar as comparações gráficas.")
+        st.info("Insira dados na barra lateral para liberar as comparações.")
     else:
+        atributos_selecionados = st.multiselect("Selecione as propriedades do solo para comparar simultaneamente:", ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'], default=['pH', 'Materia_Organica (%)', 'Argila (%)'])
+        if not atributos_selecionados:
+            st.warning("Selecione pelo menos um atributo.")
+        else:
+            df_medias = df.groupby('Ambiente_Origem')[atributos_selecionados].mean().reset_index()
+            df_melt = pd.melt(df_medias, id_vars=['Ambiente_Origem'], value_vars=atributos_selecionados, var_name='Propriedade', value_name='Valor_Medio')
+            df_melt['Valor_Medio'] = np.round(df_melt['Valor_Medio'], 2)
+            fig_colunas = px.bar(df_melt, x='Propriedade', y='Valor_Medio', color='Ambiente_Origem', barmode='group', text='Valor_Medio', template="plotly_dark", height=500)
+            fig_colunas.update_traces(textposition='outside', textfont_size=12, cliponaxis=False)
+            st.plotly_chart(fig_colunas, use_container_width=True)
+
