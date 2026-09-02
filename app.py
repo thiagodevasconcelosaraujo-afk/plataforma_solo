@@ -25,9 +25,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 ARQUIVO_BANCO = "banco_solo.csv"
+COLUNAS_ESPERADAS = ['Ambiente_Origem', 'ID_Parcela', 'pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
 
-def inicializar_banco():
-    if not os.path.exists(ARQUIVO_BANCO):
+# Função robusta para inicializar ou corrigir o banco de dados se ele estiver corrompido
+def inicializar_banco(forcar=False):
+    if forcar or not os.path.exists(ARQUIVO_BANCO):
         np.random.seed(42)
         dados = {
             'Ambiente_Origem': ['ÁREA A (SAVANA)'] * 20 + ['ÁREA B (FLORESTA)'] * 20,
@@ -41,7 +43,15 @@ def inicializar_banco():
         pd.DataFrame(dados).to_csv(ARQUIVO_BANCO, index=False)
 
 inicializar_banco()
-df = pd.read_csv(ARQUIVO_BANCO)
+
+# Validação em tempo real para evitar que o gráfico suma se o arquivo CSV estiver quebrado
+try:
+    df = pd.read_csv(ARQUIVO_BANCO)
+    if not all(col in df.columns for col in COLUNAS_ESPERADAS) or df.empty:
+        raise ValueError("Banco de dados desatualizado ou vazio.")
+except:
+    inicializar_banco(forcar=True)
+    df = pd.read_csv(ARQUIVO_BANCO)
 
 # --- INTERFACE ---
 st.title("🌱 Plataforma de Organização e Análise de Solo")
@@ -101,24 +111,20 @@ if botao_salvar:
         except ValueError:
             st.sidebar.error("Erro: Preencha apenas números válidos!")
 
-# BARRA LATERAL: Nova Seção de Exclusão Múltipla Avançada
+# BARRA LATERAL: Remoção de Múltiplas Parcelas
 st.sidebar.markdown("---")
 st.sidebar.header("🗑️ Remover Múltiplas Amostras")
 
 deletar_ambiente = st.sidebar.selectbox("1. Escolha o Ambiente:", [""] + list(df['Ambiente_Origem'].unique()))
 
 if deletar_ambiente != "":
-    # Filtra e lista apenas os códigos das parcelas que pertencem a esse ambiente escolhido
     parcelas_disponiveis = df[df['Ambiente_Origem'] == deletar_ambiente]['ID_Parcela'].unique()
-    
-    # Caixa de multisseleção onde você marca várias de uma só vez
     parcelas_selecionadas = st.sidebar.multiselect("2. Selecione as parcelas para deletar:", options=parcelas_disponiveis)
     
     if st.sidebar.button("❌ Excluir Selecionadas Permanentemente"):
         if not parcelas_selecionadas:
             st.sidebar.warning("Selecione pelo menos uma parcela!")
         else:
-            # Filtra o banco de dados removendo todas as linhas marcadas de uma só vez
             df = df[~((df['Ambiente_Origem'] == deletar_ambiente) & (df['ID_Parcela'].isin(parcelas_selecionadas)))]
             df.to_csv(ARQUIVO_BANCO, index=False)
             st.sidebar.success(f"{len(parcelas_selecionadas)} parcela(s) removida(s) com sucesso!")
@@ -133,13 +139,23 @@ aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Paine
 
 with aba_geral:
     st.write("### Painel Geral de Atributos do Solo")
-    ambiente_sel = st.selectbox("Escolha o Ambiente:", df['Ambiente_Origem'].unique())
-    df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel]
+    
+    # Previne quebra se o banco for resetado do zero
+    ambientes_disponiveis = df['Ambiente_Origem'].unique() if not df.empty else ["NENHUM"]
+    ambiente_sel = st.selectbox("Escolha o Ambiente:", ambientes_disponiveis)
+    df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel] if not df.empty else pd.DataFrame()
+    
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
-    col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
-    col3.metric(label="Teor Médio de Argila", value=f"{df_filtrado['Argila (%)'].mean():.2f}%")
-    col4.metric(label="Matéria Orgânica Média", value=f"{df_filtrado['Materia_Organica (%)'].mean():.2f}%")
+    if not df_filtrado.empty:
+        col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
+        col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
+        col3.metric(label="Teor Médio de Argila", value=f"{df_filtrado['Argila (%)'].mean():.2f}%")
+        col4.metric(label="Matéria Orgânica Média", value=f"{df_filtrado['Materia_Organica (%)'].mean():.2f}%")
+    else:
+        col1.metric(label="Média de pH", value="0.00")
+        col2.metric(label="Média de Condutividade", value="0.00")
+        col3.metric(label="Teor Médio de Argila", value="0.00")
+        col4.metric(label="Matéria Orgânica Média", value="0.00")
     
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -150,3 +166,7 @@ with aba_geral:
 with aba_comparativo:
     st.write("### Análise Multivariada Comparativa de Propriedades")
     st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
+    
+    if df.empty or len(df['Ambiente_Origem'].unique()) < 1:
+        st.info("Insira dados na barra lateral para liberar as comparações gráficas.")
+    else:
