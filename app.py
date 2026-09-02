@@ -13,13 +13,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS para o Modo Escuro
+# Estilização CSS para o Modo Escuro e componentes visuais
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #ffffff; }
     .stTabs [data-baseweb="tab"] { font-size: 18px; font-weight: bold; color: #a3a8b4; }
     .stTabs [data-baseweb="tab"]:hover { color: #00e676; }
     .stTabs [aria-selected="true"] { color: #00e676 !important; border-bottom-color: #00e676 !important; }
+    
+    /* Estilização para o painel do desenvolvedor */
+    .dev-box {
+        background-color: #1e222b;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #00e676;
+        margin-top: 20px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -51,17 +60,18 @@ st.title("🌱 Plataforma de Organização e Análise de Solo")
 st.subheader("Cadastro Livre de Amostras e Comparação de Ambientes")
 st.markdown("---")
 
-# BARRA LATERAL: 2 Seções (Cadastrar/Atualizar e Deletar)
+# BARRA LATERAL: Configurações, Formulários e Créditos
 st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
 with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
     novo_ambiente = st.text_input("Ambiente de Origem (Ex: PEMA, Flona):", placeholder="Digite o local...").strip().upper()
     nova_parcela = st.text_input("ID/Código da Parcela (Ex: R-01):", placeholder="Código identificador...").strip().upper()
     
     st.markdown("---")
-    novo_ph = st.number_input("pH do Solo:", min_value=0.0, max_value=14.0, value=4.5, step=0.1)
-    nova_condutividade = st.number_input("Condutividade (µS/cm):", min_value=0.0, value=25.0, step=1.0)
-    nova_argila = st.number_input("Teor de Argila (%):", min_value=0.0, max_value=100.0, value=15.0, step=0.5)
-    nova_mo = st.number_input("Matéria Orgânica (%):", min_value=0.0, max_value=100.0, value=2.0, step=0.1)
+    # CORREÇÃO: Adicionado format="%.1f" para travar as casas decimais e impedir arredondamentos na tela
+    novo_ph = st.number_input("pH do Solo:", min_value=0.0, max_value=14.0, value=4.5, step=0.1, format="%.1f")
+    nova_condutividade = st.number_input("Condutividade (µS/cm):", min_value=0.0, value=25.0, step=1.0, format="%.1f")
+    nova_argila = st.number_input("Teor de Argila (%):", min_value=0.0, max_value=100.0, value=15.0, step=0.5, format="%.1f")
+    nova_mo = st.number_input("Matéria Orgânica (%):", min_value=0.0, max_value=100.0, value=2.0, step=0.1, format="%.1f")
     nova_altitude = st.number_input("Altitude do Ponto (m):", min_value=0.0, value=150.0, step=1.0)
     
     botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados")
@@ -91,7 +101,7 @@ if botao_salvar:
             st.sidebar.success(f"Nova amostra {nova_parcela} CADASTRADA!")
         st.rerun()
 
-# NOVA FUNÇÃO: Seção de Exclusão na Barra Lateral
+# Seção de Exclusão na Barra Lateral
 st.sidebar.markdown("---")
 st.sidebar.header("🗑️ Remover Amostra do Sistema")
 with st.sidebar.form(key="formulario_deletar", clear_on_submit=True):
@@ -112,6 +122,19 @@ if botao_deletar:
             st.sidebar.success(f"Amostra {deletar_parcela} excluída com sucesso!")
             st.rerun()
 
+# NOVA SEÇÃO: Créditos ao Desenvolvedor Thiago Araújo de Vasconcelos na Barra Lateral
+st.sidebar.markdown("---")
+st.sidebar.markdown(
+    """
+    <div class="dev-box">
+        <strong style='color: #00e676; font-size: 14px;'>💻 DESENVOLVEDOR DO SISTEMA</strong><br>
+        <span style='font-size: 16px; font-weight: bold;'>Thiago Araújo de Vasconcelos</span><br>
+        <span style='color: #a3a8b4; font-size: 12px;'>Plataforma Edáfica de Análise Ecológica</span>
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
 # ABAS PRINCIPAIS
 aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📦 Comparativo Interativo 3D"])
 
@@ -129,7 +152,7 @@ with aba_geral:
     
     st.markdown("#### Tabela Geral do Banco de Dados")
     
-    # NOVA FUNÇÃO: Botão para Download em formato Excel (.xlsx) funcional
+    # Botão para Download em formato Excel (.xlsx) funcional
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Dados_Solo')
