@@ -27,7 +27,7 @@ st.markdown("""
 ARQUIVO_BANCO = "banco_solo.csv"
 COLUNAS_ESPERADAS = ['Ambiente_Origem', 'ID_Parcela', 'pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
 
-# Função robusta para inicializar ou corrigir o banco de dados se ele estiver corrompido
+# Inicialização ou autocorreção do banco de dados
 def inicializar_banco(forcar=False):
     if forcar or not os.path.exists(ARQUIVO_BANCO):
         np.random.seed(42)
@@ -44,11 +44,10 @@ def inicializar_banco(forcar=False):
 
 inicializar_banco()
 
-# Validação em tempo real para evitar que o gráfico suma se o arquivo CSV estiver quebrado
 try:
     df = pd.read_csv(ARQUIVO_BANCO)
     if not all(col in df.columns for col in COLUNAS_ESPERADAS) or df.empty:
-        raise ValueError("Banco de dados desatualizado ou vazio.")
+        raise ValueError()
 except:
     inicializar_banco(forcar=True)
     df = pd.read_csv(ARQUIVO_BANCO)
@@ -63,15 +62,12 @@ st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
 with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
     novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
     nova_parcela = st.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...").strip().upper()
-    
     st.markdown("---")
-    st.caption("Digite livremente usando ponto ou vírgula (Ex: 0.58 ou 0,99).")
     input_ph = st.text_input("pH do Solo:", value="4.50").strip()
     input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00").strip()
     input_argila = st.text_input("Teor de Argila (%):", value="15.00").strip()
     input_mo = st.text_input("Matéria Orgânica (%):", value="2.00").strip()
     input_altitude = st.text_input("Altitude do Ponto (m):", value="150").strip()
-    
     botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados")
 
 if botao_salvar:
@@ -114,20 +110,19 @@ if botao_salvar:
 # BARRA LATERAL: Remoção de Múltiplas Parcelas
 st.sidebar.markdown("---")
 st.sidebar.header("🗑️ Remover Múltiplas Amostras")
-
 deletar_ambiente = st.sidebar.selectbox("1. Escolha o Ambiente:", [""] + list(df['Ambiente_Origem'].unique()))
 
 if deletar_ambiente != "":
     parcelas_disponiveis = df[df['Ambiente_Origem'] == deletar_ambiente]['ID_Parcela'].unique()
     parcelas_selecionadas = st.sidebar.multiselect("2. Selecione as parcelas para deletar:", options=parcelas_disponiveis)
     
-    if st.sidebar.button("❌ Excluir Selecionadas Permanentemente"):
+    if st.sidebar.button("❌ Excluir Permanentemente"):
         if not parcelas_selecionadas:
             st.sidebar.warning("Selecione pelo menos uma parcela!")
         else:
             df = df[~((df['Ambiente_Origem'] == deletar_ambiente) & (df['ID_Parcela'].isin(parcelas_selecionadas)))]
             df.to_csv(ARQUIVO_BANCO, index=False)
-            st.sidebar.success(f"{len(parcelas_selecionadas)} parcela(s) removida(s) com sucesso!")
+            st.sidebar.success("Parcela(s) removida(s) com sucesso!")
             st.rerun()
 
 # Seção de Créditos ao Desenvolvedor
@@ -139,8 +134,6 @@ aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Paine
 
 with aba_geral:
     st.write("### Painel Geral de Atributos do Solo")
-    
-    # Previne quebra se o banco for resetado do zero
     ambientes_disponiveis = df['Ambiente_Origem'].unique() if not df.empty else ["NENHUM"]
     ambiente_sel = st.selectbox("Escolha o Ambiente:", ambientes_disponiveis)
     df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel] if not df.empty else pd.DataFrame()
