@@ -41,16 +41,57 @@ st.subheader("Cadastro Livre de Amostras e Comparação de Ambientes")
 st.markdown("---")
 
 st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
-with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
-    novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
-    nova_parcela = st.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...").strip().upper()
-    st.markdown("---")
-    input_ph = st.text_input("pH do Solo:", value="4.50").strip()
-    input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00").strip()
-    input_argila = st.text_input("Teor de Argila (%):", value="15.00").strip()
-    input_mo = st.text_input("Matéria Orgânica (%):", value="2.00").strip()
-    input_altitude = st.text_input("Altitude do Ponto (m):", value="150").strip()
-    botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados")
+
+# Gerenciamento do estado dos inputs para os botões funcionarem de forma reativa
+for chave, padrao in [('sb_ph', 4.50), ('sb_cond', 25.00), ('sb_arg', 15.00), ('sb_mo', 2.00), ('sb_alt', 150.0)]:
+    if chave not in st.session_state:
+        st.session_state[chave] = padrao
+
+# Função auxiliar para recalcular e ajustar os valores decimais complexos (Ex: 0.99 -> 1.00)
+def ajustar_valor(chave, incremento):
+    try:
+        atual = float(st.session_state[chave])
+        st.session_state[chave] = np.round(max(0.0, atual + incremento), 2)
+    except:
+        pass
+
+novo_ambiente = st.sidebar.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
+nova_parcela = st.sidebar.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...").strip().upper()
+st.sidebar.markdown("---")
+
+# Interface de botões laterais acoplados para celular (+1 casa decimal e +10 rápidos)
+st.sidebar.markdown("**pH do Solo**")
+c1, c2, c3 = st.sidebar.columns([2, 1, 1])
+input_ph = c1.text_input("pH:", value=f"{st.session_state['sb_ph']:.2f}", label_visibility="collapsed")
+if c2.button("+0.01", key="b_ph1"): ajustar_valor('sb_ph', 0.01); st.rerun()
+if c3.button("+10", key="b_ph10"): ajustar_valor('sb_ph', 10.0); st.rerun()
+
+st.sidebar.markdown("**Condutividade (µS/cm)**")
+c1, c2, c3 = st.sidebar.columns([2, 1, 1])
+input_condutividade = c1.text_input("Cond:", value=f"{st.session_state['sb_cond']:.2f}", label_visibility="collapsed")
+if c2.button("+0.01", key="b_co1"): ajustar_valor('sb_cond', 0.01); st.rerun()
+if c3.button("+10", key="b_co10"): ajustar_valor('sb_cond', 10.0); st.rerun()
+
+st.sidebar.markdown("**Teor de Argila (%)**")
+c1, c2, c3 = st.sidebar.columns([2, 1, 1])
+input_argila = c1.text_input("Arg:", value=f"{st.session_state['sb_arg']:.2f}", label_visibility="collapsed")
+if c2.button("+0.01", key="b_ar1"): ajustar_valor('sb_arg', 0.01); st.rerun()
+if c3.button("+10", key="b_ar10"): ajustar_valor('sb_arg', 10.0); st.rerun()
+
+st.sidebar.markdown("**Matéria Orgânica (%)**")
+c1, c2, c3 = st.sidebar.columns([2, 1, 1])
+input_mo = c1.text_input("MO:", value=f"{st.session_state['sb_mo']:.2f}", label_visibility="collapsed")
+if c2.button("+0.01", key="b_mo1"): ajustar_valor('sb_mo', 0.01); st.rerun()
+if c3.button("+10", key="b_mo10"): ajustar_valor('sb_mo', 10.0); st.rerun()
+
+st.sidebar.markdown("**Altitude (m)**")
+c1, c2, c3 = st.sidebar.columns([2, 1, 1])
+input_altitude = c1.text_input("Alt:", value=f"{st.session_state['sb_alt']:.1f}", label_visibility="collapsed")
+if c2.button("+0.1", key="b_al1"): ajustar_valor('sb_alt', 0.1); st.rerun()
+if c3.button("+10", key="b_al10"): ajustar_valor('sb_alt', 10.0); st.rerun()
+
+st.sidebar.markdown("---")
+botao_salvar = st.sidebar.button("💾 Salvar / Atualizar Dados")
 
 if botao_salvar:
     if not novo_ambiente or not nova_parcela:
@@ -67,7 +108,6 @@ if botao_salvar:
                 st.sidebar.error("Erro: Valores fora dos limites permitidos!")
             else:
                 existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
-                
                 if existe_registro:
                     idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
                     df.loc[idx, 'pH'] = v_ph
@@ -76,18 +116,14 @@ if botao_salvar:
                     df.loc[idx, 'Materia_Organica (%)'] = v_mo
                     df.loc[idx, 'Altitude (m)'] = v_alt
                 else:
-                    nova_linha = pd.DataFrame([{
-                        'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 
-                        'pH': v_ph, 'Condutividade (µS/cm)': v_cond, 
-                        'Argila (%)': v_arg, 'Materia_Organica (%)': v_mo, 'Altitude (m)': v_alt
-                    }])
+                    nova_linha = pd.DataFrame([{'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 'pH': v_ph, 'Condutividade (µS/cm)': v_cond, 'Argila (%)': v_arg, 'Materia_Organica (%)': v_mo, 'Altitude (m)': v_alt}])
                     df = pd.concat([df, nova_linha], ignore_index=True)
                 
                 df.to_csv(ARQUIVO_BANCO, index=False)
-                st.sidebar.success("Dados processados com sucesso!")
+                st.sidebar.success("Dados salvos perfeitamente!")
                 st.rerun()
         except ValueError:
-            st.sidebar.error("Erro: Preencha apenas números válidos nos campos!")
+            st.sidebar.error("Erro: Verifique os números digitados!")
 
 st.sidebar.markdown("---")
 st.sidebar.header("🗑️ Remover Amostra do Sistema")
@@ -120,25 +156,3 @@ with aba_geral:
     df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel]
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
-    col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
-    col3.metric(label="Teor Médio de Argila", value=f"{df_filtrado['Argila (%)'].mean():.2f}%")
-    col4.metric(label="Matéria Orgânica Média", value=f"{df_filtrado['Materia_Organica (%)'].mean():.2f}%")
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Dados_Solo')
-    st.download_button(label="📥 Baixar Banco de Dados Completo (.Excel)", data=output.getvalue(), file_name="banco_solo.xlsx")
-    st.dataframe(df, use_container_width=True)
-
-with aba_comparativo:
-    st.write("### Análise Multivariada Comparativa de Propriedades")
-    st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
-    atributos_selecionados = st.multiselect("Selecione as propriedades do solo para comparar:", ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'], default=['pH', 'Materia_Organica (%)', 'Argila (%)'])
-    if not atributos_selecionados:
-        st.warning("Selecione pelo menos um atributo.")
-    else:
-        df_melt = df.groupby('Ambiente_Origem')[atributos_selecionados].mean().reset_index()
-        df_melt = pd.melt(df_melt, id_vars=['Ambiente_Origem'], value_vars=atributos_selecionados, var_name='Propriedade', value_name='Valor_Medio')
-        df_melt['Valor_Medio'] = np.round(df_melt['Valor_Medio'], 2)
-        fig_colunas = px.bar(df_melt, x='Propriedade', y='Valor_Medio', color='Ambiente_Origem', barmode='group', text='Valor_Medio', template="plotly_dark", height=500)
-        fig_colunas.update_traces(textposition='outside', textfont_size=12, cliponaxis=False)
-        st.plotly_chart(fig_colunas, use_container_width=True)
