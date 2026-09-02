@@ -5,8 +5,15 @@ import plotly.express as px
 import os
 from io import BytesIO
 
-st.set_page_config(page_title="Plataforma Edáfica Universal", page_icon="🌱", layout="wide", initial_sidebar_state="expanded")
+# Configuração da Página
+st.set_page_config(
+    page_title="Plataforma Edáfica Universal",
+    page_icon="🌱",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
+# Estilização CSS para o Modo Escuro
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #ffffff; }
@@ -40,90 +47,59 @@ st.title("🌱 Plataforma de Organização e Análise de Solo")
 st.subheader("Cadastro Livre de Amostras e Comparação de Ambientes")
 st.markdown("---")
 
+# BARRA LATERAL: Entrada manual estável (Evita travamentos e loops no celular)
 st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
-
-# Gerenciamento do estado dos inputs para os botões funcionarem de forma reativa
-for chave, padrao in [('sb_ph', 4.50), ('sb_cond', 25.00), ('sb_arg', 15.00), ('sb_mo', 2.00), ('sb_alt', 150.0)]:
-    if chave not in st.session_state:
-        st.session_state[chave] = padrao
-
-# Função auxiliar para recalcular e ajustar os valores decimais complexos (Ex: 0.99 -> 1.00)
-def ajustar_valor(chave, incremento):
-    try:
-        atual = float(st.session_state[chave])
-        st.session_state[chave] = np.round(max(0.0, atual + incremento), 2)
-    except:
-        pass
-
-novo_ambiente = st.sidebar.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
-nova_parcela = st.sidebar.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...").strip().upper()
-st.sidebar.markdown("---")
-
-# Interface de botões laterais acoplados para celular (+1 casa decimal e +10 rápidos)
-st.sidebar.markdown("**pH do Solo**")
-c1, c2, c3 = st.sidebar.columns([2, 1, 1])
-input_ph = c1.text_input("pH:", value=f"{st.session_state['sb_ph']:.2f}", label_visibility="collapsed")
-if c2.button("+0.01", key="b_ph1"): ajustar_valor('sb_ph', 0.01); st.rerun()
-if c3.button("+10", key="b_ph10"): ajustar_valor('sb_ph', 10.0); st.rerun()
-
-st.sidebar.markdown("**Condutividade (µS/cm)**")
-c1, c2, c3 = st.sidebar.columns([2, 1, 1])
-input_condutividade = c1.text_input("Cond:", value=f"{st.session_state['sb_cond']:.2f}", label_visibility="collapsed")
-if c2.button("+0.01", key="b_co1"): ajustar_valor('sb_cond', 0.01); st.rerun()
-if c3.button("+10", key="b_co10"): ajustar_valor('sb_cond', 10.0); st.rerun()
-
-st.sidebar.markdown("**Teor de Argila (%)**")
-c1, c2, c3 = st.sidebar.columns([2, 1, 1])
-input_argila = c1.text_input("Arg:", value=f"{st.session_state['sb_arg']:.2f}", label_visibility="collapsed")
-if c2.button("+0.01", key="b_ar1"): ajustar_valor('sb_arg', 0.01); st.rerun()
-if c3.button("+10", key="b_ar10"): ajustar_valor('sb_arg', 10.0); st.rerun()
-
-st.sidebar.markdown("**Matéria Orgânica (%)**")
-c1, c2, c3 = st.sidebar.columns([2, 1, 1])
-input_mo = c1.text_input("MO:", value=f"{st.session_state['sb_mo']:.2f}", label_visibility="collapsed")
-if c2.button("+0.01", key="b_mo1"): ajustar_valor('sb_mo', 0.01); st.rerun()
-if c3.button("+10", key="b_mo10"): ajustar_valor('sb_mo', 10.0); st.rerun()
-
-st.sidebar.markdown("**Altitude (m)**")
-c1, c2, c3 = st.sidebar.columns([2, 1, 1])
-input_altitude = c1.text_input("Alt:", value=f"{st.session_state['sb_alt']:.1f}", label_visibility="collapsed")
-if c2.button("+0.1", key="b_al1"): ajustar_valor('sb_alt', 0.1); st.rerun()
-if c3.button("+10", key="b_al10"): ajustar_valor('sb_alt', 10.0); st.rerun()
-
-st.sidebar.markdown("---")
-botao_salvar = st.sidebar.button("💾 Salvar / Atualizar Dados")
+with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
+    novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
+    nova_parcela = st.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...").strip().upper()
+    
+    st.markdown("---")
+    st.caption("Digite livremente usando ponto ou vírgula (Ex: 0.58 ou 0,99). O sistema salvará sem arredondar.")
+    input_ph = st.text_input("pH do Solo:", value="4.50").strip()
+    input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00").strip()
+    input_argila = st.text_input("Teor de Argila (%):", value="15.00").strip()
+    input_mo = st.text_input("Matéria Orgânica (%):", value="2.00").strip()
+    input_altitude = st.text_input("Altitude do Ponto (m):", value="150").strip()
+    
+    botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados")
 
 if botao_salvar:
     if not novo_ambiente or not nova_parcela:
         st.sidebar.error("Preencha o Ambiente de Origem e o ID da Parcela!")
     else:
         try:
-            v_ph = np.round(float(input_ph.replace(',', '.')), 2)
-            v_cond = np.round(float(input_condutividade.replace(',', '.')), 2)
-            v_arg = np.round(float(input_argila.replace(',', '.')), 2)
-            v_mo = np.round(float(input_mo.replace(',', '.')), 2)
-            v_alt = np.round(float(input_altitude.replace(',', '.')), 1)
+            # Conversão robusta forçando float de duas casas decimais complexas
+            v_ph = float(input_ph.replace(',', '.'))
+            v_cond = float(input_condutividade.replace(',', '.'))
+            v_arg = float(input_argila.replace(',', '.'))
+            v_mo = float(input_mo.replace(',', '.'))
+            v_alt = float(input_altitude.replace(',', '.'))
             
             if not (0 <= v_ph <= 14) or not (0 <= v_arg <= 100) or not (0 <= v_mo <= 100):
                 st.sidebar.error("Erro: Valores fora dos limites permitidos!")
             else:
                 existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
+                
                 if existe_registro:
                     idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
-                    df.loc[idx, 'pH'] = v_ph
-                    df.loc[idx, 'Condutividade (µS/cm)'] = v_cond
-                    df.loc[idx, 'Argila (%)'] = v_arg
-                    df.loc[idx, 'Materia_Organica (%)'] = v_mo
-                    df.loc[idx, 'Altitude (m)'] = v_alt
+                    df.loc[idx, 'pH'] = np.round(v_ph, 2)
+                    df.loc[idx, 'Condutividade (µS/cm)'] = np.round(v_cond, 2)
+                    df.loc[idx, 'Argila (%)'] = np.round(v_arg, 2)
+                    df.loc[idx, 'Materia_Organica (%)'] = np.round(v_mo, 2)
+                    df.loc[idx, 'Altitude (m)'] = np.round(v_alt, 1)
                 else:
-                    nova_linha = pd.DataFrame([{'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 'pH': v_ph, 'Condutividade (µS/cm)': v_cond, 'Argila (%)': v_arg, 'Materia_Organica (%)': v_mo, 'Altitude (m)': v_alt}])
+                    nova_linha = pd.DataFrame([{
+                        'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 
+                        'pH': np.round(v_ph, 2), 'Condutividade (µS/cm)': np.round(v_cond, 2), 
+                        'Argila (%)': np.round(v_arg, 2), 'Materia_Organica (%)': np.round(v_mo, 2), 'Altitude (m)': np.round(v_alt, 1)
+                    }])
                     df = pd.concat([df, nova_linha], ignore_index=True)
                 
                 df.to_csv(ARQUIVO_BANCO, index=False)
-                st.sidebar.success("Dados salvos perfeitamente!")
+                st.sidebar.success("Dados salvos com precisão de duas casas!")
                 st.rerun()
         except ValueError:
-            st.sidebar.error("Erro: Verifique os números digitados!")
+            st.sidebar.error("Erro: Preencha apenas números válidos nos campos!")
 
 st.sidebar.markdown("---")
 st.sidebar.header("🗑️ Remover Amostra do Sistema")
@@ -148,6 +124,7 @@ if botao_deletar:
 st.sidebar.markdown("---")
 st.sidebar.markdown("""<div class="dev-box"><strong style='color: #00e676; font-size: 14px;'>💻 DESENVOLVEDOR DO SISTEMA</strong><br><span style='font-size: 16px; font-weight: bold;'>Thiago Araújo de Vasconcelos</span><br><span style='color: #a3a8b4; font-size: 12px;'>Plataforma Edáfica de Análise Ecológica</span></div>""", unsafe_allow_html=True)
 
+# ABAS PRINCIPAIS
 aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Painel de Comparação Gráfica"])
 
 with aba_geral:
@@ -156,3 +133,27 @@ with aba_geral:
     df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel]
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
+    col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
+    col3.metric(label="Teor Médio de Argila", value=f"{df_filtrado['Argila (%)'].mean():.2f}%")
+    col4.metric(label="Matéria Orgânica Média", value=f"{df_filtrado['Materia_Organica (%)'].mean():.2f}%")
+    
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Dados_Solo')
+    st.download_button(label="📥 Baixar Banco de Dados Completo (.Excel)", data=output.getvalue(), file_name="banco_solo.xlsx")
+    st.dataframe(df, use_container_width=True)
+
+with aba_comparativo:
+    st.write("### Análise Multivariada Comparativa de Propriedades")
+    st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
+    atributos_selecionados = st.multiselect("Selecione as propriedades do solo para comparar simultaneamente:", ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'], default=['pH', 'Materia_Organica (%)', 'Argila (%)'])
+    if not atributos_selecionados:
+        st.warning("Selecione pelo menos um atributo.")
+    else:
+        df_medias = df.groupby('Ambiente_Origem')[atributos_selecionados].mean().reset_index()
+        df_melt = pd.melt(df_medias, id_vars=['Ambiente_Origem'], value_vars=atributos_selecionados, var_name='Propriedade', value_name='Valor_Medio')
+        df_melt['Valor_Medio'] = np.round(df_melt['Valor_Medio'], 2)
+        
+        fig_colunas = px.bar(df_melt, x='Propriedade', y='Valor_Medio', color='Ambiente_Origem', barmode='group', text='Valor_Medio', template="plotly_dark", height=500)
+        fig_colunas.update_traces(textposition='outside', textfont_size=12, cliponaxis=False)
+        st.plotly_chart(fig_colunas, use_container_width=True)
