@@ -20,15 +20,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { font-size: 18px; font-weight: bold; color: #a3a8b4; }
     .stTabs [data-baseweb="tab"]:hover { color: #00e676; }
     .stTabs [aria-selected="true"] { color: #00e676 !important; border-bottom-color: #00e676 !important; }
-    
-    /* Estilização para o painel do desenvolvedor */
-    .dev-box {
-        background-color: #1e222b;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 4px solid #00e676;
-        margin-top: 20px;
-    }
+    .dev-box { background-color: #1e222b; padding: 15px; border-radius: 8px; border-left: 4px solid #00e676; margin-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -167,22 +159,17 @@ with aba_geral:
 
 with aba_comparativo:
     st.write("### Gráfico de Colunas Agrupadas Comparativo")
-    st.caption("Selecione o atributo do solo desejado. O sistema agrupará e exibirá os valores médios lado a lado para cada ambiente.")
+    st.caption("Selecione o atributo do solo desejado para visualizar os valores médios lado a lado por ambiente.")
     
-    # Seletor interativo para escolher qual atributo analisar nas colunas
     variavel_coluna = st.selectbox(
-        "Selecione o atributo para gerar o gráfico de colunas agrupadas:", 
+        "Selecione o atributo para analisar:", 
         ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
     )
     
-    # Lógica em Python para calcular a média de forma dinâmica agrupada por Ambiente de Origem
+    # Cálculo das médias e arredondamento em linhas compactas
     df_medias = df.groupby('Ambiente_Origem')[variavel_coluna].mean().reset_index()
     df_medias[variavel_coluna] = np.round(df_medias[variavel_coluna], 2)
     
-    # Geração do Gráfico de Colunas Agrupadas Interativo (Bar Chart)
-    fig_colunas = px.bar(
-        df_medias,
-        x='Ambiente_Origem',
-        y=variavel_coluna,
-        color='Ambiente_Origem',
-        text=variavel_coluna, # Exibe o valor exato no topo de cada coluna
+    # Linhas encurtadas para evitar cortes de colagem do Linux Nano
+    fig_colunas = px.bar(df_medias, x='Ambiente_Origem', y=variavel_coluna, color='Ambiente_Origem', text=variavel_coluna, template="plotly_dark", height=500)
+    fig_colunas.update_traces(textposition='outside', textfont_size=14, cliponaxis=False)
