@@ -43,18 +43,19 @@ def inicializar_banco():
 inicializar_banco()
 df = pd.read_csv(ARQUIVO_BANCO)
 
+# --- INTERFACE ---
 st.title("🌱 Plataforma de Organização e Análise de Solo")
 st.subheader("Cadastro Livre de Amostras e Comparação de Ambientes")
 st.markdown("---")
 
-# BARRA LATERAL: Entrada manual estável (Evita travamentos e loops no celular)
+# BARRA LATERAL: Cadastro e Atualização
 st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
 with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
     novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
     nova_parcela = st.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...").strip().upper()
     
     st.markdown("---")
-    st.caption("Digite livremente usando ponto ou vírgula (Ex: 0.58 ou 0,99). O sistema salvará sem arredondar.")
+    st.caption("Digite livremente usando ponto ou vírgula (Ex: 0.58 ou 0,99).")
     input_ph = st.text_input("pH do Solo:", value="4.50").strip()
     input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00").strip()
     input_argila = st.text_input("Teor de Argila (%):", value="15.00").strip()
@@ -68,7 +69,6 @@ if botao_salvar:
         st.sidebar.error("Preencha o Ambiente de Origem e o ID da Parcela!")
     else:
         try:
-            # Conversão robusta forçando float de duas casas decimais complexas
             v_ph = float(input_ph.replace(',', '.'))
             v_cond = float(input_condutividade.replace(',', '.'))
             v_arg = float(input_argila.replace(',', '.'))
@@ -96,31 +96,35 @@ if botao_salvar:
                     df = pd.concat([df, nova_linha], ignore_index=True)
                 
                 df.to_csv(ARQUIVO_BANCO, index=False)
-                st.sidebar.success("Dados salvos com precisão de duas casas!")
+                st.sidebar.success("Dados salvos com precisão!")
                 st.rerun()
         except ValueError:
-            st.sidebar.error("Erro: Preencha apenas números válidos nos campos!")
+            st.sidebar.error("Erro: Preencha apenas números válidos!")
 
+# BARRA LATERAL: Nova Seção de Exclusão Múltipla Avançada
 st.sidebar.markdown("---")
-st.sidebar.header("🗑️ Remover Amostra do Sistema")
-with st.sidebar.form(key="formulario_deletar", clear_on_submit=True):
-    deletar_ambiente = st.selectbox("Ambiente da amostra:", [""] + list(df['Ambiente_Origem'].unique()))
-    deletar_parcela = st.text_input("ID da Parcela:").strip().upper()
-    botao_deletar = st.form_submit_button(label="❌ Excluir Permanentemente")
+st.sidebar.header("🗑️ Remover Múltiplas Amostras")
 
-if botao_deletar:
-    if deletar_ambiente == "" or not deletar_parcela:
-        st.sidebar.error("Selecione o Ambiente e preencha o ID!")
-    else:
-        alvo = df[(df['Ambiente_Origem'] == deletar_ambiente) & (df['ID_Parcela'] == deletar_parcela)]
-        if alvo.empty:
-            st.sidebar.error("Nenhuma amostra encontrada.")
+deletar_ambiente = st.sidebar.selectbox("1. Escolha o Ambiente:", [""] + list(df['Ambiente_Origem'].unique()))
+
+if deletar_ambiente != "":
+    # Filtra e lista apenas os códigos das parcelas que pertencem a esse ambiente escolhido
+    parcelas_disponiveis = df[df['Ambiente_Origem'] == deletar_ambiente]['ID_Parcela'].unique()
+    
+    # Caixa de multisseleção onde você marca várias de uma só vez
+    parcelas_selecionadas = st.sidebar.multiselect("2. Selecione as parcelas para deletar:", options=parcelas_disponiveis)
+    
+    if st.sidebar.button("❌ Excluir Selecionadas Permanentemente"):
+        if not parcelas_selecionadas:
+            st.sidebar.warning("Selecione pelo menos uma parcela!")
         else:
-            df = df.drop(alvo.index)
+            # Filtra o banco de dados removendo todas as linhas marcadas de uma só vez
+            df = df[~((df['Ambiente_Origem'] == deletar_ambiente) & (df['ID_Parcela'].isin(parcelas_selecionadas)))]
             df.to_csv(ARQUIVO_BANCO, index=False)
-            st.sidebar.success("Amostra excluída!")
+            st.sidebar.success(f"{len(parcelas_selecionadas)} parcela(s) removida(s) com sucesso!")
             st.rerun()
 
+# Seção de Créditos ao Desenvolvedor
 st.sidebar.markdown("---")
 st.sidebar.markdown("""<div class="dev-box"><strong style='color: #00e676; font-size: 14px;'>💻 DESENVOLVEDOR DO SISTEMA</strong><br><span style='font-size: 16px; font-weight: bold;'>Thiago Araújo de Vasconcelos</span><br><span style='color: #a3a8b4; font-size: 12px;'>Plataforma Edáfica de Análise Ecológica</span></div>""", unsafe_allow_html=True)
 
@@ -146,14 +150,3 @@ with aba_geral:
 with aba_comparativo:
     st.write("### Análise Multivariada Comparativa de Propriedades")
     st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
-    atributos_selecionados = st.multiselect("Selecione as propriedades do solo para comparar simultaneamente:", ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'], default=['pH', 'Materia_Organica (%)', 'Argila (%)'])
-    if not atributos_selecionados:
-        st.warning("Selecione pelo menos um atributo.")
-    else:
-        df_medias = df.groupby('Ambiente_Origem')[atributos_selecionados].mean().reset_index()
-        df_melt = pd.melt(df_medias, id_vars=['Ambiente_Origem'], value_vars=atributos_selecionados, var_name='Propriedade', value_name='Valor_Medio')
-        df_melt['Valor_Medio'] = np.round(df_melt['Valor_Medio'], 2)
-        
-        fig_colunas = px.bar(df_melt, x='Propriedade', y='Valor_Medio', color='Ambiente_Origem', barmode='group', text='Valor_Medio', template="plotly_dark", height=500)
-        fig_colunas.update_traces(textposition='outside', textfont_size=12, cliponaxis=False)
-        st.plotly_chart(fig_colunas, use_container_width=True)
