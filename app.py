@@ -34,10 +34,10 @@ def inicializar_banco():
             'Ambiente_Origem': ['ÁREA A (SAVANA)'] * 20 + ['ÁREA B (FLORESTA)'] * 20,
             'ID_Parcela': [f"P-{i:02d}" for i in range(1, 21)] * 2,
             'pH': np.round(np.concatenate([np.random.uniform(4.2, 5.5, 20), np.random.uniform(3.8, 4.8, 20)]), 2),
-            'Condutividade (µS/cm)': np.round(np.concatenate([np.random.uniform(10, 50, 20), np.random.uniform(40, 120, 20)]), 1),
-            'Argila (%)': np.round(np.concatenate([np.random.uniform(5, 25, 20), np.random.uniform(30, 65, 20)]), 1),
-            'Materia_Organica (%)': np.round(np.concatenate([np.random.uniform(1.2, 3.0, 20), np.random.uniform(3.5, 7.0, 20)]), 1),
-            'Altitude (m)': np.round(np.concatenate([np.random.uniform(120, 350, 20), np.random.uniform(80, 200, 20)]), 0)
+            'Condutividade (µS/cm)': np.round(np.concatenate([np.random.uniform(10, 50, 20), np.random.uniform(40, 120, 20)]), 2),
+            'Argila (%)': np.round(np.concatenate([np.random.uniform(5, 25, 20), np.random.uniform(30, 65, 20)]), 2),
+            'Materia_Organica (%)': np.round(np.concatenate([np.random.uniform(1.2, 3.0, 20), np.random.uniform(3.5, 7.0, 20)]), 2),
+            'Altitude (m)': np.round(np.concatenate([np.random.uniform(120, 350, 20), np.random.uniform(80, 200, 20)]), 1)
         }
         df_inicial = pd.DataFrame(dados)
         df_inicial.to_csv(ARQUIVO_BANCO, index=False)
@@ -59,10 +59,11 @@ with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
     nova_parcela = st.text_input("ID/Código da Parcela (Ex: R-01):", placeholder="Código identificador...").strip().upper()
     
     st.markdown("---")
-    novo_ph = st.number_input("pH do Solo:", min_value=0.0, max_value=14.0, value=4.5, step=0.1, format="%.1f")
-    nova_condutividade = st.number_input("Condutividade (µS/cm):", min_value=0.0, value=25.0, step=1.0, format="%.1f")
-    nova_argila = st.number_input("Teor de Argila (%):", min_value=0.0, max_value=100.0, value=15.0, step=0.5, format="%.1f")
-    nova_mo = st.number_input("Matéria Orgânica (%):", min_value=0.0, max_value=100.0, value=2.0, step=0.1, format="%.1f")
+    # CORREÇÃO: Mudado o format para "%.2f" permitindo a visualização e input exato de valores como 0.99
+    novo_ph = st.number_input("pH do Solo:", min_value=0.0, max_value=14.0, value=4.50, step=0.01, format="%.2f")
+    nova_condutividade = st.number_input("Condutividade (µS/cm):", min_value=0.0, value=25.00, step=0.01, format="%.2f")
+    nova_argila = st.number_input("Teor de Argila (%):", min_value=0.0, max_value=100.0, value=15.00, step=0.01, format="%.2f")
+    nova_mo = st.number_input("Matéria Orgânica (%):", min_value=0.0, max_value=100.0, value=2.00, step=0.01, format="%.2f")
     nova_altitude = st.number_input("Altitude do Ponto (m):", min_value=0.0, value=150.0, step=1.0)
     
     botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados")
@@ -73,20 +74,21 @@ if botao_salvar:
     else:
         existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
         
+        # CORREÇÃO: Modificado np.round para 2 casas decimais preservando o 0.99 de forma exata no banco de dados
         if existe_registro:
             idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
             df.loc[idx, 'pH'] = np.round(novo_ph, 2)
-            df.loc[idx, 'Condutividade (µS/cm)'] = np.round(nova_condutividade, 1)
-            df.loc[idx, 'Argila (%)'] = np.round(nova_argila, 1)
-            df.loc[idx, 'Materia_Organica (%)'] = np.round(nova_mo, 1)
-            df.loc[idx, 'Altitude (m)'] = np.round(nova_altitude, 0)
+            df.loc[idx, 'Condutividade (µS/cm)'] = np.round(nova_condutividade, 2)
+            df.loc[idx, 'Argila (%)'] = np.round(nova_argila, 2)
+            df.loc[idx, 'Materia_Organica (%)'] = np.round(nova_mo, 2)
+            df.loc[idx, 'Altitude (m)'] = np.round(nova_altitude, 1)
             df.to_csv(ARQUIVO_BANCO, index=False)
             st.sidebar.success(f"Amostra {nova_parcela} de {novo_ambiente} ATUALIZADA!")
         else:
             nova_linha = pd.DataFrame([{
                 'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 'pH': np.round(novo_ph, 2),
-                'Condutividade (µS/cm)': np.round(nova_condutividade, 1), 'Argila (%)': np.round(nova_argila, 1),
-                'Materia_Organica (%)': np.round(nova_mo, 1), 'Altitude (m)': np.round(nova_altitude, 0)
+                'Condutividade (µS/cm)': np.round(nova_condutividade, 2), 'Argila (%)': np.round(nova_argila, 2),
+                'Materia_Organica (%)': np.round(nova_mo, 2), 'Altitude (m)': np.round(nova_altitude, 1)
             }])
             nova_linha.to_csv(ARQUIVO_BANCO, mode='a', header=False, index=False)
             st.sidebar.success(f"Nova amostra {nova_parcela} CADASTRADA!")
@@ -137,9 +139,9 @@ with aba_geral:
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
-    col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.1f} µS/cm")
-    col3.metric(label="Teor Médio de Argila", value=f"{df_filtrado['Argila (%)'].mean():.1f}%")
-    col4.metric(label="Matéria Orgânica Média", value=f"{df_filtrado['Materia_Organica (%)'].mean():.1f}%")
+    col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
+    col3.metric(label="Teor Médio de Argila", value=f"{df_filtrado['Argila (%)'].mean():.2f}%")
+    col4.metric(label="Matéria Orgânica Média", value=f"{df_filtrado['Materia_Organica (%)'].mean():.2f}%")
     
     st.markdown("#### Tabela Geral do Banco de Dados")
     
@@ -158,18 +160,39 @@ with aba_geral:
     st.dataframe(df, use_container_width=True)
 
 with aba_comparativo:
-    st.write("### Gráfico de Colunas Agrupadas Comparativo")
-    st.caption("Selecione o atributo do solo desejado para visualizar os valores médios lado a lado por ambiente.")
+    st.write("### Análise Multivariada Comparativa de Propriedades")
+    st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
     
-    variavel_coluna = st.selectbox(
-        "Selecione o atributo para analisar:", 
-        ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
+    # NOVA FUNÇÃO MULTIVARIADA: O usuário seleciona quais propriedades quer comparar juntas na tela
+    atributos_selecionados = st.multiselect(
+        "Selecione as propriedades do solo que deseja comparar simultaneamente:",
+        ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'],
+        default=['pH', 'Materia_Organica (%)', 'Argila (%)']
     )
     
-    # Cálculo das médias e arredondamento em linhas compactas
-    df_medias = df.groupby('Ambiente_Origem')[variavel_coluna].mean().reset_index()
-    df_medias[variavel_coluna] = np.round(df_medias[variavel_coluna], 2)
-    
-    # Linhas encurtadas para evitar cortes de colagem do Linux Nano
-    fig_colunas = px.bar(df_medias, x='Ambiente_Origem', y=variavel_coluna, color='Ambiente_Origem', text=variavel_coluna, template="plotly_dark", height=500)
-    fig_colunas.update_traces(textposition='outside', textfont_size=14, cliponaxis=False)
+    if not atributos_selecionados:
+        st.warning("Selecione pelo menos um atributo para gerar a comparação multivariada.")
+    else:
+        # Extração matemática das médias de todos os atributos selecionados agrupados por Ambiente
+        df_melt = df.groupby('Ambiente_Origem')[atributos_selecionados].mean().reset_index()
+        
+        # Transformação da tabela para formato longo exigido pelas colunas agrupadas do Plotly
+        df_melt = pd.melt(df_melt, id_vars=['Ambiente_Origem'], value_vars=atributos_selecionados, var_name='Propriedade', value_name='Valor_Medio')
+        df_melt['Valor_Medio'] = np.round(df_melt['Valor_Medio'], 2)
+        
+        # Geração do Gráfico de Colunas Agrupadas Paralelas com múltiplos Atributos simultâneos
+        fig_colunas = px.bar(
+            df_melt,
+            x='Propriedade',
+            y='Valor_Medio',
+            color='Ambiente_Origem',
+            barmode='group', # Agrupa as colunas dos ambientes lado a lado para cada propriedade
+            text='Valor_Medio',
+            template="plotly_dark",
+            labels={'Valor_Medio': 'Média Calculada', 'Propriedade': 'Propriedades do Solo Comparadas'},
+            height=600
+        )
+        
+        fig_colunas.update_traces(textposition='outside', textfont_size=12, cliponaxis=False)
+        fig_colunas.update_layout(
+            margin=dict(l=40, r=40, t=40, b=40),
