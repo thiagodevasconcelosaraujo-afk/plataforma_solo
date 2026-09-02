@@ -42,8 +42,8 @@ st.markdown("---")
 
 st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
 with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
-    novo_ambiente = st.text_input("Ambiente de Origem (Ex: PEMA, Flona):", placeholder="Digite o local...").strip().upper()
-    nova_parcela = st.text_input("ID/Código da Parcela (Ex: R-01):", placeholder="Código identificador...").strip().upper()
+    novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
+    nova_parcela = st.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...").strip().upper()
     st.markdown("---")
     input_ph = st.text_input("pH do Solo:", value="4.50").strip()
     input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00").strip()
@@ -57,25 +57,32 @@ if botao_salvar:
         st.sidebar.error("Preencha o Ambiente de Origem e o ID da Parcela!")
     else:
         try:
-            novo_ph = float(input_ph.replace(',', '.'))
-            nova_condutividade = float(input_condutividade.replace(',', '.'))
-            nova_argila = float(input_argila.replace(',', '.'))
-            nova_mo = float(input_mo.replace(',', '.'))
-            nova_altitude = float(input_altitude.replace(',', '.'))
-            if not (0 <= novo_ph <= 14) or not (0 <= nova_argila <= 100) or not (0 <= nova_mo <= 100):
+            v_ph = np.round(float(input_ph.replace(',', '.')), 2)
+            v_cond = np.round(float(input_condutividade.replace(',', '.')), 2)
+            v_arg = np.round(float(input_argila.replace(',', '.')), 2)
+            v_mo = np.round(float(input_mo.replace(',', '.')), 2)
+            v_alt = np.round(float(input_altitude.replace(',', '.')), 1)
+            
+            if not (0 <= v_ph <= 14) or not (0 <= v_arg <= 100) or not (0 <= v_mo <= 100):
                 st.sidebar.error("Erro: Valores fora dos limites permitidos!")
             else:
                 existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
+                
                 if existe_registro:
                     idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
-                    df.loc[idx, 'pH'] = np.round(novo_ph, 2)
-                    df.loc[idx, 'Condutividade (µS/cm)'] = np.round(nova_condutividade, 2)
-                    df.loc[idx, 'Argila (%)'] = np.round(nova_argila, 2)
-                    df.loc[idx, 'Materia_Organica (%)'] = np.round(nova_mo, 2)
-                    df.loc[idx, 'Altitude (m)'] = np.round(nova_altitude, 1)
+                    df.loc[idx, 'pH'] = v_ph
+                    df.loc[idx, 'Condutividade (µS/cm)'] = v_cond
+                    df.loc[idx, 'Argila (%)'] = v_arg
+                    df.loc[idx, 'Materia_Organica (%)'] = v_mo
+                    df.loc[idx, 'Altitude (m)'] = v_alt
                 else:
-                    nova_linha = pd.DataFrame([{'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 'pH': np.round(novo_ph, 2), 'Condutividade (µS/cm)': np.round(nova_condutividade, 2), 'Argila (%)': np.round(nova_argila, 2), 'Materia_Organica (%)': np.round(nova_mo, 2), 'Altitude (m)': np.round(nova_altitude, 1)}])
+                    nova_linha = pd.DataFrame([{
+                        'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 
+                        'pH': v_ph, 'Condutividade (µS/cm)': v_cond, 
+                        'Argila (%)': v_arg, 'Materia_Organica (%)': v_mo, 'Altitude (m)': v_alt
+                    }])
                     df = pd.concat([df, nova_linha], ignore_index=True)
+                
                 df.to_csv(ARQUIVO_BANCO, index=False)
                 st.sidebar.success("Dados processados com sucesso!")
                 st.rerun()
@@ -125,7 +132,7 @@ with aba_geral:
 with aba_comparativo:
     st.write("### Análise Multivariada Comparativa de Propriedades")
     st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
-    atributos_selecionados = st.multiselect("Selecione as propriedades do solo para comparar simultaneamente:", ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'], default=['pH', 'Materia_Organica (%)', 'Argila (%)'])
+    atributos_selecionados = st.multiselect("Selecione as propriedades do solo para comparar:", ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'], default=['pH', 'Materia_Organica (%)', 'Argila (%)'])
     if not atributos_selecionados:
         st.warning("Selecione pelo menos um atributo.")
     else:
