@@ -1,0 +1,81 @@
+Ambiente,Parcela_ID,pH,Condutividade (µS/cm),Argila (%),Materia_Organica (%),Altitude (m)
+PEMA (Savana),R-01,4.69,44.5,12.4,2.9,246.0
+PEMA (Savana),R-02,5.44,34.9,17.6,2.9,284.0
+PEMA (Savana),R-03,5.15,23.2,17.7,2.8,272.0
+PEMA (Savana),R-04,4.98,12.5,15.7,1.9,184.0
+PEMA (Savana),R-05,4.4,22.4,6.8,1.2,340.0
+PEMA (Savana),R-06,4.4,23.0,21.7,2.9,290.0
+PEMA (Savana),R-07,4.28,39.2,11.4,2.0,248.0
+PEMA (Savana),R-08,5.33,35.5,8.7,2.9,261.0
+PEMA (Savana),R-09,4.98,45.5,5.8,2.9,217.0
+PEMA (Savana),R-10,5.12,28.9,16.8,2.7,177.0
+PEMA (Savana),R-11,4.23,14.8,18.6,1.7,202.0
+PEMA (Savana),R-12,5.46,38.5,5.3,1.9,294.0
+PEMA (Savana),R-13,5.28,40.4,15.2,2.7,123.0
+PEMA (Savana),R-14,4.48,32.5,9.5,1.8,147.0
+PEMA (Savana),R-15,4.44,40.8,17.9,1.5,131.0
+PEMA (Savana),R-16,4.44,29.8,8.5,2.2,129.0
+PEMA (Savana),R-17,4.6,30.9,18.8,2.9,317.0
+PEMA (Savana),R-18,4.88,27.1,12.7,2.5,282.0
+PEMA (Savana),R-19,4.76,11.0,23.7,2.2,229.0
+PEMA (Savana),R-20,4.58,14.3,7.8,1.4,143.0
+PEMA (Savana),R-21,5.0,11.3,11.8,2.3,233.0
+PEMA (Savana),R-22,4.38,35.5,7.3,3.0,229.0
+PEMA (Savana),R-23,4.58,22.6,23.5,1.5,160.0
+PEMA (Savana),R-24,4.68,30.3,22.5,2.1,220.0
+PEMA (Savana),R-25,4.79,46.3,10.2,2.8,212.0
+PEMA (Savana),R-26,5.22,20.0,18.2,2.5,262.0
+PEMA (Savana),R-27,4.46,26.4,21.3,2.5,266.0
+PEMA (Savana),R-28,4.87,40.2,16.1,2.5,130.0
+PEMA (Savana),R-29,4.97,19.2,15.6,1.8,206.0
+PEMA (Savana),R-30,4.26,13.1,9.8,1.7,264.0
+PEMA (Savana),R-31,4.99,21.6,6.9,2.7,236.0
+PEMA (Savana),R-32,4.42,16.4,22.9,2.7,317.0
+PEMA (Savana),R-33,4.28,47.2,23.0,2.8,271.0
+PEMA (Savana),R-34,5.43,42.3,17.7,2.8,157.0
+PEMA (Savana),R-35,5.46,35.3,11.8,2.1,136.0
+PEMA (Savana),R-36,5.25,44.9,12.0,2.1,268.0
+PEMA (Savana),R-37,4.6,42.1,19.5,2.6,126.0
+PEMA (Savana),R-38,4.33,17.5,22.9,2.4,255.0
+PEMA (Savana),R-39,5.09,45.7,22.7,2.5,336.0
+PEMA (Savana),R-40,4.77,31.6,20.6,2.6,252.0
+Flona da Mulata (Floresta),R-01,3.92,104.6,52.5,6.6,127.0
+Flona da Mulata (Floresta),R-02,4.3,111.7,32.9,4.7,157.0
+Flona da Mulata (Floresta),R-03,3.83,65.4,35.7,4.8,135.0
+Flona da Mulata (Floresta),R-04,4.71,48.8,61.4,3.8,145.0
+Flona da Mulata (Floresta),R-05,4.06,58.2,51.2,5.5,193.0
+Flona da Mulata (Floresta),R-06,4.46,74.2,30.3,3.6,126.0
+Flona da Mulata (Floresta),R-07,4.11,105.4,33.6,5.1,195.0
+Flona da Mulata (Floresta),R-08,4.32,108.9,53.2,5.4,189.0
+Flona da Mulata (Floresta),R-09,4.35,40.6,30.2,4.5,103.0
+Flona da Mulata (Floresta),R-10,3.98,80.9,35.6,5.6,88.0
+Flona da Mulata (Floresta),R-11,4.77,73.4,49.2,3.6,92.0
+Flona da Mulata (Floresta),R-12,4.58,57.8,54.2,3.6,82.0
+Flona da Mulata (Floresta),R-13,4.74,49.6,52.8,6.4,91.0
+Flona da Mulata (Floresta),R-14,4.69,67.0,37.8,4.8,162.0
+Flona da Mulata (Floresta),R-15,4.4,115.4,54.9,3.9,89.0
+Flona da Mulata (Floresta),R-16,4.72,65.9,38.3,5.3,118.0
+Flona da Mulata (Floresta),R-17,3.89,81.5,41.4,6.2,181.0
+Flona da Mulata (Floresta),R-18,4.0,96.2,56.1,4.3,83.0
+Flona da Mulata (Floresta),R-19,3.85,69.1,52.7,5.7,178.0
+Flona da Mulata (Floresta),R-20,4.13,117.7,59.7,3.8,114.0
+Flona da Mulata (Floresta),R-21,4.19,117.0,53.0,3.7,94.0
+Flona da Mulata (Floresta),R-22,4.07,60.1,49.9,5.4,164.0
+Flona da Mulata (Floresta),R-23,4.63,79.8,33.3,5.4,155.0
+Flona da Mulata (Floresta),R-24,4.16,64.1,42.9,5.7,185.0
+Flona da Mulata (Floresta),R-25,4.08,62.8,39.3,6.0,168.0
+Flona da Mulata (Floresta),R-26,4.34,43.0,38.5,6.9,176.0
+Flona da Mulata (Floresta),R-27,3.94,88.8,64.1,5.3,114.0
+Flona da Mulata (Floresta),R-28,4.6,80.2,43.8,4.6,101.0
+Flona da Mulata (Floresta),R-29,3.87,44.1,61.2,6.3,170.0
+Flona da Mulata (Floresta),R-30,4.79,62.3,52.1,4.4,177.0
+Flona da Mulata (Floresta),R-31,4.57,112.7,57.8,5.0,199.0
+Flona da Mulata (Floresta),R-32,4.0,59.2,47.6,3.8,130.0
+Flona da Mulata (Floresta),R-33,3.81,51.6,50.2,3.6,125.0
+Flona da Mulata (Floresta),R-34,4.62,79.2,47.2,6.9,173.0
+Flona da Mulata (Floresta),R-35,4.51,118.9,36.8,6.4,121.0
+Flona da Mulata (Floresta),R-36,4.53,59.4,55.3,5.9,192.0
+Flona da Mulata (Floresta),R-37,4.57,93.8,39.8,4.9,183.0
+Flona da Mulata (Floresta),R-38,3.87,100.9,30.9,4.1,131.0
+Flona da Mulata (Floresta),R-39,4.16,59.0,52.6,4.0,170.0
+Flona da Mulata (Floresta),R-40,3.92,98.3,36.2,4.4,171.0
