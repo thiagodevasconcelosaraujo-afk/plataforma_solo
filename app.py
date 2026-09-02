@@ -67,7 +67,6 @@ with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
     nova_parcela = st.text_input("ID/Código da Parcela (Ex: R-01):", placeholder="Código identificador...").strip().upper()
     
     st.markdown("---")
-    # CORREÇÃO: Adicionado format="%.1f" para travar as casas decimais e impedir arredondamentos na tela
     novo_ph = st.number_input("pH do Solo:", min_value=0.0, max_value=14.0, value=4.5, step=0.1, format="%.1f")
     nova_condutividade = st.number_input("Condutividade (µS/cm):", min_value=0.0, value=25.0, step=1.0, format="%.1f")
     nova_argila = st.number_input("Teor de Argila (%):", min_value=0.0, max_value=100.0, value=15.0, step=0.5, format="%.1f")
@@ -122,7 +121,7 @@ if botao_deletar:
             st.sidebar.success(f"Amostra {deletar_parcela} excluída com sucesso!")
             st.rerun()
 
-# NOVA SEÇÃO: Créditos ao Desenvolvedor Thiago Araújo de Vasconcelos na Barra Lateral
+# Seção de Créditos ao Desenvolvedor Thiago Araújo de Vasconcelos na Barra Lateral
 st.sidebar.markdown("---")
 st.sidebar.markdown(
     """
@@ -136,7 +135,7 @@ st.sidebar.markdown(
 )
 
 # ABAS PRINCIPAIS
-aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📦 Comparativo Interativo 3D"])
+aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Painel de Comparação Gráfica"])
 
 with aba_geral:
     st.write("### Painel Geral de Atributos do Solo")
@@ -152,7 +151,6 @@ with aba_geral:
     
     st.markdown("#### Tabela Geral do Banco de Dados")
     
-    # Botão para Download em formato Excel (.xlsx) funcional
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Dados_Solo')
@@ -168,23 +166,23 @@ with aba_geral:
     st.dataframe(df, use_container_width=True)
 
 with aba_comparativo:
-    st.write("### Gráfico Comparativo Interativo 3D")
-    st.caption("Escolha as variáveis nos eixos abaixo para atualizar a renderização do espaço edáfico.")
+    st.write("### Gráfico de Colunas Agrupadas Comparativo")
+    st.caption("Selecione o atributo do solo desejado. O sistema agrupará e exibirá os valores médios lado a lado para cada ambiente.")
     
-    col_eixo1, col_eixo2, col_eixo3 = st.columns(3)
-    with col_eixo1:
-        eixo_x = st.selectbox("Variável Física (Eixo X):", ['Argila (%)', 'Altitude (m)'])
-    with col_eixo2:
-        eixo_y = st.selectbox("Variável Química (Eixo Y):", ['pH', 'Condutividade (µS/cm)'])
-    with col_eixo3:
-        eixo_z = st.selectbox("Dinâmica Orgânica (Eixo Z):", ['Materia_Organica (%)'])
-        
-    fig_3d = px.scatter_3d(
-        df, x=eixo_x, y=eixo_y, z=eixo_z, color='Ambiente_Origem',
-        hover_data=['ID_Parcela'], opacity=0.8, height=650
+    # Seletor interativo para escolher qual atributo analisar nas colunas
+    variavel_coluna = st.selectbox(
+        "Selecione o atributo para gerar o gráfico de colunas agrupadas:", 
+        ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
     )
-    fig_3d.update_layout(
-        template="plotly_dark", margin=dict(l=0, r=0, b=0, t=30),
-        scene=dict(xaxis_title=eixo_x, yaxis_title=eixo_y, zaxis_title=eixo_z, bgcolor="rgb(14, 17, 23)")
-    )
-    st.plotly_chart(fig_3d, use_container_width=True)
+    
+    # Lógica em Python para calcular a média de forma dinâmica agrupada por Ambiente de Origem
+    df_medias = df.groupby('Ambiente_Origem')[variavel_coluna].mean().reset_index()
+    df_medias[variavel_coluna] = np.round(df_medias[variavel_coluna], 2)
+    
+    # Geração do Gráfico de Colunas Agrupadas Interativo (Bar Chart)
+    fig_colunas = px.bar(
+        df_medias,
+        x='Ambiente_Origem',
+        y=variavel_coluna,
+        color='Ambiente_Origem',
+        text=variavel_coluna, # Exibe o valor exato no topo de cada coluna
