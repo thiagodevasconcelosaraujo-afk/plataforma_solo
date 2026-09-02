@@ -1,4 +1,4 @@
-import streamlit as st
+kimport streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -59,12 +59,12 @@ with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
     nova_parcela = st.text_input("ID/Código da Parcela (Ex: R-01):", placeholder="Código identificador...").strip().upper()
     
     st.markdown("---")
-    # Formato ajustado para duas casas decimais complexas como 0.58 ou 0.99
-    novo_ph = st.number_input("pH do Solo:", min_value=0.0, max_value=14.0, value=4.50, step=0.01, format="%.2f")
-    nova_condutividade = st.number_input("Condutividade (µS/cm):", min_value=0.0, value=25.00, step=0.01, format="%.2f")
-    nova_argila = st.number_input("Teor de Argila (%):", min_value=0.0, max_value=100.0, value=15.00, step=0.01, format="%.2f")
-    nova_mo = st.number_input("Matéria Orgânica (%):", min_value=0.0, max_value=100.0, value=2.00, step=0.01, format="%.2f")
-    nova_altitude = st.number_input("Altitude do Ponto (m):", min_value=0.0, value=150.0, step=1.0)
+    # ATUALIZAÇÃO CELULAR: Mudado para text_input estável. O usuário digita livremente sem o bug do reset automático.
+    input_ph = st.text_input("pH do Solo:", value="4.50", help="Exemplo: 4.35 ou 0.99").strip()
+    input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00").strip()
+    input_argila = st.text_input("Teor de Argila (%):", value="15.00").strip()
+    input_mo = st.text_input("Matéria Orgânica (%):", value="2.00").strip()
+    input_altitude = st.text_input("Altitude do Ponto (m):", value="150").strip()
     
     botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados")
 
@@ -72,26 +72,44 @@ if botao_salvar:
     if not novo_ambiente or not nova_parcela:
         st.sidebar.error("Preencha o Ambiente de Origem e o ID da Parcela!")
     else:
-        existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
-        
-        if existe_registro:
-            idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
-            df.loc[idx, 'pH'] = np.round(novo_ph, 2)
-            df.loc[idx, 'Condutividade (µS/cm)'] = np.round(nova_condutividade, 2)
-            df.loc[idx, 'Argila (%)'] = np.round(nova_argila, 2)
-            df.loc[idx, 'Materia_Organica (%)'] = np.round(nova_mo, 2)
-            df.loc[idx, 'Altitude (m)'] = np.round(nova_altitude, 1)
-            df.to_csv(ARQUIVO_BANCO, index=False)
-            st.sidebar.success(f"Amostra {nova_parcela} de {novo_ambiente} ATUALIZADA!")
-        else:
-            nova_linha = pd.DataFrame([{
-                'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 'pH': np.round(novo_ph, 2),
-                'Condutividade (µS/cm)': np.round(nova_condutividade, 2), 'Argila (%)': np.round(nova_argila, 2),
-                'Materia_Organica (%)': np.round(nova_mo, 2), 'Altitude (m)': np.round(nova_altitude, 1)
-            }])
-            nova_linha.to_csv(ARQUIVO_BANCO, mode='a', header=False, index=False)
-            st.sidebar.success(f"Nova amostra {nova_parcela} CADASTRADA!")
-        st.rerun()
+        try:
+            # Converte e padroniza as entradas de texto para números reais (aceita tanto ponto quanto vírgula do celular)
+            novo_ph = float(input_ph.replace(',', '.'))
+            nova_condutividade = float(input_condutividade.replace(',', '.'))
+            nova_argila = float(input_argila.replace(',', '.'))
+            nova_mo = float(input_mo.replace(',', '.'))
+            nova_altitude = float(input_altitude.replace(',', '.'))
+            
+            # Validação básica de limites lógicos
+            if not (0 <= novo_ph <= 14):
+                st.sidebar.error("Erro: O pH deve estar entre 0 e 14!")
+            elif not (0 <= nova_argila <= 100) or not (0 <= nova_mo <= 100):
+                st.sidebar.error("Erro: Porcentagens devem estar entre 0 e 100!")
+            else:
+                # Lógica de gravação estável com 2 casas decimais completas
+                existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
+                
+                if existe_registro:
+                    idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
+                    df.loc[idx, 'pH'] = np.round(novo_ph, 2)
+                    df.loc[idx, 'Condutividade (µS/cm)'] = np.round(nova_condutividade, 2)
+                    df.loc[idx, 'Argila (%)'] = np.round(nova_argila, 2)
+                    df.loc[idx, 'Materia_Organica (%)'] = np.round(nova_mo, 2)
+                    df.loc[idx, 'Altitude (m)'] = np.round(nova_altitude, 1)
+                    df.to_csv(ARQUIVO_BANCO, index=False)
+                    st.sidebar.success(f"Amostra {nova_parcela} de {novo_ambiente} ATUALIZADA!")
+                else:
+                    nova_linha = pd.DataFrame([{
+                        'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 'pH': np.round(novo_ph, 2),
+                        'Condutividade (µS/cm)': np.round(nova_condutividade, 2), 'Argila (%)': np.round(nova_argila, 2),
+                        'Materia_Organica (%)': np.round(nova_mo, 2), 'Altitude (m)': np.round(nova_altitude, 1)
+                    }])
+                    nova_linha.to_csv(ARQUIVO_BANCO, mode='a', header=False, index=False)
+                    st.sidebar.success(f"Nova amostra {nova_parcela} CADASTRADA!")
+                st.rerun()
+                
+        except ValueError:
+            st.sidebar.error("Erro: Certifique-se de preencher apenas números nos campos edáficos!")
 
 # Seção de Exclusão na Barra Lateral
 st.sidebar.markdown("---")
@@ -139,41 +157,4 @@ with aba_geral:
     col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
     col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
     col3.metric(label="Teor Médio de Argila", value=f"{df_filtrado['Argila (%)'].mean():.2f}%")
-    col4.metric(label="Matéria Orgânica Média", value=f"{df_filtrado['Materia_Organica (%)'].mean():.2f}%")
-    
-    st.markdown("#### Tabela Geral do Banco de Dados")
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Dados_Solo')
-    dados_excel = output.getvalue()
 
-    st.download_button(
-        label="📥 Baixar Banco de Dados Completo (.Excel)",
-        data=dados_excel,
-        file_name="banco_dados_solo_limpo.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    st.dataframe(df, use_container_width=True)
-
-with aba_comparativo:
-    st.write("### Análise Multivariada Comparativa de Propriedades")
-    st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
-    
-    atributos_selecionados = st.multiselect(
-        "Selecione as propriedades do solo que deseja comparar simultaneamente:",
-        ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'],
-        default=['pH', 'Materia_Organica (%)', 'Argila (%)']
-    )
-    
-    if not atributos_selecionados:
-        st.warning("Selecione pelo menos um atributo para gerar a comparação multivariada.")
-    else:
-        df_melt = df.groupby('Ambiente_Origem')[atributos_selecionados].mean().reset_index()
-        df_melt = pd.melt(df_melt, id_vars=['Ambiente_Origem'], value_vars=atributos_selecionados, var_name='Propriedade', value_name='Valor_Medio')
-        df_melt['Valor_Medio'] = np.round(df_melt['Valor_Medio'], 2)
-        
-        # Correção final da sintaxe do gráfico de barras para linha única curta
-        fig_colunas = px.bar(df_melt, x='Propriedade', y='Valor_Medio', color='Ambiente_Origem', barmode='group', text='Valor_Medio', template="plotly_dark", height=500)
-        fig_colunas.update_traces(textposition='outside', textfont_size=12, cliponaxis=False)
-        fig_colunas.update_layout(margin=dict(l=40, r=40, t=40, b=40), xaxis_title="Atributos Analisados", yaxis_title="Valores Médios")
-        st.plotly_chart(fig_colunas, use_container_width=True)
