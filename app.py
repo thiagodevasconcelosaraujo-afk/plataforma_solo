@@ -59,7 +59,7 @@ with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
     nova_parcela = st.text_input("ID/Código da Parcela (Ex: R-01):", placeholder="Código identificador...").strip().upper()
     
     st.markdown("---")
-    # CORREÇÃO: Mudado o format para "%.2f" permitindo a visualização e input exato de valores como 0.99
+    # Formato ajustado para duas casas decimais complexas como 0.58 ou 0.99
     novo_ph = st.number_input("pH do Solo:", min_value=0.0, max_value=14.0, value=4.50, step=0.01, format="%.2f")
     nova_condutividade = st.number_input("Condutividade (µS/cm):", min_value=0.0, value=25.00, step=0.01, format="%.2f")
     nova_argila = st.number_input("Teor de Argila (%):", min_value=0.0, max_value=100.0, value=15.00, step=0.01, format="%.2f")
@@ -74,7 +74,6 @@ if botao_salvar:
     else:
         existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
         
-        # CORREÇÃO: Modificado np.round para 2 casas decimais preservando o 0.99 de forma exata no banco de dados
         if existe_registro:
             idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
             df.loc[idx, 'pH'] = np.round(novo_ph, 2)
@@ -115,7 +114,7 @@ if botao_deletar:
             st.sidebar.success(f"Amostra {deletar_parcela} excluída com sucesso!")
             st.rerun()
 
-# Seção de Créditos ao Desenvolvedor Thiago Araújo de Vasconcelos na Barra Lateral
+# Seção de Créditos ao Desenvolvedor
 st.sidebar.markdown("---")
 st.sidebar.markdown(
     """
@@ -133,7 +132,6 @@ aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Paine
 
 with aba_geral:
     st.write("### Painel Geral de Atributos do Solo")
-    
     ambiente_sel = st.selectbox("Escolha o Ambiente para Filtrar os Cards Médios:", df['Ambiente_Origem'].unique())
     df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel]
     
@@ -144,7 +142,6 @@ with aba_geral:
     col4.metric(label="Matéria Orgânica Média", value=f"{df_filtrado['Materia_Organica (%)'].mean():.2f}%")
     
     st.markdown("#### Tabela Geral do Banco de Dados")
-    
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Dados_Solo')
@@ -156,14 +153,12 @@ with aba_geral:
         file_name="banco_dados_solo_limpo.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    
     st.dataframe(df, use_container_width=True)
 
 with aba_comparativo:
     st.write("### Análise Multivariada Comparativa de Propriedades")
     st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
     
-    # NOVA FUNÇÃO MULTIVARIADA: O usuário seleciona quais propriedades quer comparar juntas na tela
     atributos_selecionados = st.multiselect(
         "Selecione as propriedades do solo que deseja comparar simultaneamente:",
         ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'],
@@ -173,26 +168,12 @@ with aba_comparativo:
     if not atributos_selecionados:
         st.warning("Selecione pelo menos um atributo para gerar a comparação multivariada.")
     else:
-        # Extração matemática das médias de todos os atributos selecionados agrupados por Ambiente
         df_melt = df.groupby('Ambiente_Origem')[atributos_selecionados].mean().reset_index()
-        
-        # Transformação da tabela para formato longo exigido pelas colunas agrupadas do Plotly
         df_melt = pd.melt(df_melt, id_vars=['Ambiente_Origem'], value_vars=atributos_selecionados, var_name='Propriedade', value_name='Valor_Medio')
         df_melt['Valor_Medio'] = np.round(df_melt['Valor_Medio'], 2)
         
-        # Geração do Gráfico de Colunas Agrupadas Paralelas com múltiplos Atributos simultâneos
-        fig_colunas = px.bar(
-            df_melt,
-            x='Propriedade',
-            y='Valor_Medio',
-            color='Ambiente_Origem',
-            barmode='group', # Agrupa as colunas dos ambientes lado a lado para cada propriedade
-            text='Valor_Medio',
-            template="plotly_dark",
-            labels={'Valor_Medio': 'Média Calculada', 'Propriedade': 'Propriedades do Solo Comparadas'},
-            height=600
-        )
-        
+        # Correção final da sintaxe do gráfico de barras para linha única curta
+        fig_colunas = px.bar(df_melt, x='Propriedade', y='Valor_Medio', color='Ambiente_Origem', barmode='group', text='Valor_Medio', template="plotly_dark", height=500)
         fig_colunas.update_traces(textposition='outside', textfont_size=12, cliponaxis=False)
-        fig_colunas.update_layout(
-            margin=dict(l=40, r=40, t=40, b=40),
+        fig_colunas.update_layout(margin=dict(l=40, r=40, t=40, b=40), xaxis_title="Atributos Analisados", yaxis_title="Valores Médios")
+        st.plotly_chart(fig_colunas, use_container_width=True)
