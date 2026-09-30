@@ -1,4 +1,6 @@
 import streamlit as st
+import streamlit as st
+from autenticacao import gerenciar_login  # IMPORTA O SEU NOVO ARQUIVO DE LOGIN
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -20,7 +22,9 @@ st.markdown("""
 ARQUIVO_BANCO = "banco_solo.csv"
 COLUNAS_ESPERADAS = ['Ambiente_Origem', 'ID_Parcela', 'pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
 
-def inicializar_banco(forcar=False):
+def inicializar_banco(forcar=False):# Chame a função de login aqui. Ela vai cuidar de toda a barra lateral de acesso automaticamente.
+est_bloqueado = gerenciar_login()
+
     if forcar or not os.path.exists(ARQUIVO_BANCO):
         np.random.seed(42)
         dados = {
