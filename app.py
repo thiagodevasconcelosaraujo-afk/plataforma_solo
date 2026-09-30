@@ -18,7 +18,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 ARQUIVO_BANCO = "banco_solo.csv"
-ARQUIVO_CREDENCIAIS = ".env_admin.csv"
 COLUNAS_ESPERADAS = ['Ambiente_Origem', 'ID_Parcela', 'pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
 
 def inicializar_banco(forcar=False):
@@ -45,95 +44,23 @@ except:
     inicializar_banco(forcar=True)
     df = pd.read_csv(ARQUIVO_BANCO)
 
-# ==========================================
-# 🔑 FUNÇÕES AUXILIARES DE TEXTO PARA CREDENCIAIS
-# ==========================================
-def salvar_credenciais(nome, senha):
-    with open(ARQUIVO_CREDENCIAIS, "w", encoding="utf-8") as f:
-        f.write(f"{nome},{senha}")
+st.title("🌱 Plataforma de Organização e Análise de Solo")
+st.subheader("Cadastro Livre de Amostras e Comparação de Ambientes")
+st.markdown("---")
 
-def ler_credenciais():
-    if os.path.exists(ARQUIVO_CREDENCIAIS):
-        try:
-            with open(ARQUIVO_CREDENCIAIS, "r", encoding="utf-8") as f:
-                linha = f.read().strip()
-                if "," in linha:
-                    partes = linha.split(",")
-                    return partes[0], partes[1]
-        except:
-            return None, None
-    return None, None
-
-# ==========================================
-# 🔑 GERENCIAMENTO DE SESSÃO PERSISTENTE
-# ==========================================
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
-if "nome_usuario" not in st.session_state:
-    st.session_state.nome_usuario = ""
-
-st.sidebar.header("🔑 Controle de Acesso")
-est_bloqueado = True
-
-admin_nome_salvo, admin_senha_salva = ler_credenciais()
-
-if st.session_state.autenticado:
-    st.sidebar.success(f"🟢 Seja bem-vindo, {st.session_state.nome_usuario}!")
-    if st.sidebar.button("🚪 Sair do Modo Admin"):
-        st.session_state.autenticado = False
-        st.session_state.nome_usuario = ""
-        st.rerun()
-    est_bloqueado = False
-else:
-    modo_acesso = st.sidebar.selectbox("Tipo de Usuário:", ["👁️ Convidado (Leitura)", "⚡ Administrador (Editor)"])
-    
-    if modo_acesso == "⚡ Administrador (Editor)":
-        if admin_nome_salvo is None:
-            st.sidebar.warning("🚨 Nenhum administrador cadastrado!")
-            st.sidebar.subheader("Cadastro do Administrador")
-            novo_nome = st.sidebar.text_input("Seu Nome:", key="reg_nome").strip()
-            nova_senha = st.sidebar.text_input("Senha (4 dígitos):", type="password", max_chars=4, key="reg_senha").strip()
-            
-            if st.sidebar.button("💾 Efetuar Primeiro Cadastro"):
-                if not novo_nome or len(nova_senha) != 4 or not nova_senha.isdigit():
-                    st.sidebar.error("Insira um nome e uma senha válida de 4 números!")
-                else:
-                    salvar_credenciais(novo_nome, nova_senha)
-                    st.session_state.autenticado = True
-                    st.session_state.nome_usuario = novo_nome
-                    st.rerun()
-        else:
-            nome_input = st.sidebar.text_input("Nome de Usuário:", key="login_nome").strip()
-            senha_input = st.sidebar.text_input("Senha de 4 dígitos:", type="password", max_chars=4, key="login_senha").strip()
-            
-            if st.sidebar.button("🔓 Efetuar Login"):
-                if nome_input.lower() == admin_nome_salvo.lower() and senha_input == admin_senha_salva:
-                    st.session_state.autenticado = True
-                    st.session_state.nome_usuario = admin_nome_salvo
-                    st.rerun()
-                else:
-                    st.sidebar.error("Usuário ou Senha incorretos!")
-    else:
-        st.sidebar.info("Modo Convidado ativo.")
-
-st.sidebar.markdown("---")
-
-# ==========================================
-# 📥 CADASTRO E ATUALIZAÇÃO (COMPORTAMENTO CONDICIONAL)
-# ==========================================
 st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
 with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
-    novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...", disabled=est_bloqueado).strip().upper()
-    nova_parcela = st.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...", disabled=est_bloqueado).strip().upper()
+    novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
+    nova_parcela = st.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...").strip().upper()
     st.markdown("---")
-    input_ph = st.text_input("pH do Solo:", value="4.50", disabled=est_bloqueado).strip()
-    input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00", disabled=est_bloqueado).strip()
-    input_argila = st.text_input("Teor de Argila (%):", value="15.00", disabled=est_bloqueado).strip()
-    input_mo = st.text_input("Matéria Orgânica (%):", value="2.00", disabled=est_bloqueado).strip()
-    input_altitude = st.text_input("Altitude do Ponto (m):", value="150", disabled=est_bloqueado).strip()
-    botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados", disabled=est_bloqueado)
+    input_ph = st.text_input("pH do Solo:", value="4.50").strip()
+    input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00").strip()
+    input_argila = st.text_input("Teor de Argila (%):", value="15.00").strip()
+    input_mo = st.text_input("Matéria Orgânica (%):", value="2.00").strip()
+    input_altitude = st.text_input("Altitude do Ponto (m):", value="150").strip()
+    botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados")
 
-if botao_salvar and not est_bloqueado:
+if botao_salvar:
     if not novo_ambiente or not nova_parcela:
         st.sidebar.error("Preencha o Ambiente de Origem e o ID da Parcela!")
     else:
@@ -164,14 +91,10 @@ if botao_salvar and not est_bloqueado:
             st.sidebar.error("Erro: Preencha apenas números válidos!")
 
 st.sidebar.markdown("---")
-
-# ==========================================
-# 🗑️ REMOVER AMOSTRAS (COMPORTAMENTO CONDICIONAL)
-# ==========================================
 st.sidebar.header("🗑️ Remover Múltiplas Amostras")
-deletar_ambiente = st.sidebar.selectbox("1. Escolha o Ambiente:", [""] + list(df['Ambiente_Origem'].unique()), disabled=est_bloqueado)
+deletar_ambiente = st.sidebar.selectbox("1. Escolha o Ambiente:", [""] + list(df['Ambiente_Origem'].unique()))
 
-if deletar_ambiente != "" and not est_bloqueado:
+if deletar_ambiente != "":
     parcelas_disponiveis = df[df['Ambiente_Origem'] == deletar_ambiente]['ID_Parcela'].unique()
     parcelas_selecionadas = st.sidebar.multiselect("2. Selecione as parcelas:", options=parcelas_disponiveis)
     if st.sidebar.button("❌ Excluir Selecionadas"):
@@ -186,6 +109,43 @@ if deletar_ambiente != "" and not est_bloqueado:
 st.sidebar.markdown("---")
 st.sidebar.markdown("""<div class="dev-box"><strong style='color: #00e676; font-size: 14px;'>💻 DESENVOLVEDOR DO SISTEMA</strong><br><span style='font-size: 16px; font-weight: bold;'>Thiago Araújo de Vasconcelos</span><br><span style='color: #a3a8b4; font-size: 12px;'>Plataforma Edáfica de Análise Ecológica</span></div>""", unsafe_allow_html=True)
 
-# ==========================================
-# 📊 CONTEÚDO PRINCIPAL (EXIBIÇÃO INCONDICIONAL)
-# ==========================================
+aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Painel de Comparação Gráfica"])
+
+with aba_geral:
+    st.write("### Painel Geral de Atributos do Solo")
+    ambientes_disponiveis = df['Ambiente_Origem'].unique() if not df.empty else ["NENHUM"]
+    ambiente_sel = st.selectbox("Escolha o Ambiente:", ambientes_disponiveis)
+    df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel] if not df.empty else pd.DataFrame()
+    col1, col2, col3, col4 = st.columns(4)
+    if not df_filtrado.empty:
+        col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
+        col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
+        col3.metric(label="Teor Médio de Argila", value=f"{df_filtrado['Argila (%)'].mean():.2f}%")
+        col4.metric(label="Matéria Orgânica Média", value=f"{df_filtrado['Materia_Organica (%)'].mean():.2f}%")
+    else:
+        col1.metric(label="Média de pH", value="0.00")
+        col2.metric(label="Média de Condutividade", value="0.00")
+        col3.metric(label="Teor Médio de Argila", value="0.00")
+        col4.metric(label="Matéria Orgânica Média", value="0.00")
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Dados_Solo')
+    st.download_button(label="📥 Baixar Banco de Dados Completo (.Excel)", data=output.getvalue(), file_name="banco_solo.xlsx")
+    st.dataframe(df, use_container_width=True)
+
+with aba_comparativo:
+    st.write("### Análise Multivariada Comparativa de Propriedades")
+    st.caption("Gráfico integrado de colunas agrupadas avaliando múltiplas assinaturas do solo simultaneamente.")
+    if df.empty or len(df['Ambiente_Origem'].unique()) < 1:
+        st.info("Insira dados na barra lateral para liberar as comparações.")
+    else:
+        atributos_selecionados = st.multiselect("Selecione as propriedades do solo para comparar simultaneamente:", ['pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)'], default=['pH', 'Materia_Organica (%)', 'Argila (%)'])
+        if not atributos_selecionados:
+            st.warning("Selecione pelo menos um atributo.")
+        else:
+            df_medias = df.groupby('Ambiente_Origem')[atributos_selecionados].mean().reset_index()
+            df_melt = pd.melt(df_medias, id_vars=['Ambiente_Origem'], value_vars=atributos_selecionados, var_name='Propriedade', value_name='Valor_Medio')
+            df_melt['Valor_Medio'] = np.round(df_melt['Valor_Medio'], 2)
+            fig_colunas = px.bar(df_melt, x='Propriedade', y='Valor_Medio', color='Ambiente_Origem', barmode='group', text='Valor_Medio', template="plotly_dark", height=500)
+            fig_colunas.update_traces(textposition='outside', textfont_size=12, cliponaxis=False)
+            st.plotly_chart(fig_colunas, use_container_width=True)
