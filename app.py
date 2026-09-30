@@ -22,9 +22,7 @@ st.markdown("""
 ARQUIVO_BANCO = "banco_solo.csv"
 COLUNAS_ESPERADAS = ['Ambiente_Origem', 'ID_Parcela', 'pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
 
-def inicializar_banco(forcar=False):# Chame a função de login aqui. Ela vai cuidar de toda a barra lateral de acesso automaticamente.
-est_bloqueado = gerenciar_login()
-
+def inicializar_banco(forcar=False):
     if forcar or not os.path.exists(ARQUIVO_BANCO):
         np.random.seed(42)
         dados = {
