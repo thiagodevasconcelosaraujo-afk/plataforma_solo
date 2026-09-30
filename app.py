@@ -42,6 +42,8 @@ try:
     df = pd.read_csv(ARQUIVO_BANCO)
     if not all(col in df.columns for col in COLUNAS_ESPERADAS) or df.empty:
         raise ValueError()
+        est_bloqueado = gerenciar_login()
+
 except:
     inicializar_banco(forcar=True)
     df = pd.read_csv(ARQUIVO_BANCO)
