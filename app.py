@@ -45,56 +45,70 @@ except:
     inicializar_banco(forcar=True)
     df = pd.read_csv(ARQUIVO_BANCO)
 
-# Verificação de existência do Administrador único
+# Verificação de existência do arquivo físico do Administrador único
 admin_existe = os.path.exists(ARQUIVO_CREDENCIAIS)
 
 # ==========================================
-# 🔑 SELETOR DE PERMISSÃO NA BARRA LATERAL
+# 🔑 GERENCIAMENTO DE SESSÃO PERSISTENTE
 # ==========================================
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+if "nome_usuario" not in st.session_state:
+    st.session_state.nome_usuario = ""
+
 st.sidebar.header("🔑 Controle de Acesso")
-modo_acesso = st.sidebar.selectbox("Tipo de Usuário:", ["👁️ Convidado (Leitura)", "⚡ Administrador (Editor)"])
 
-est_bloqueado = True
-
-if modo_acesso == "⚡ Administrador (Editor)":
-    if not admin_existe:
-        st.sidebar.warning("🚨 Nenhum administrador cadastrado!")
-        st.sidebar.subheader("Configure o Administrador Único")
-        novo_nome = st.sidebar.text_input("Seu Nome:", key="reg_nome").strip()
-        nova_senha = st.sidebar.text_input("Senha (4 dígitos numéricos):", type="password", max_chars=4, key="reg_senha").strip()
-        
-        if st.sidebar.button("💾 Registrar como Administrador"):
-            if not novo_nome or len(nova_senha) != 4 or not nova_senha.isdigit():
-                st.sidebar.error("Por favor, insira um nome e uma senha válida de exatamente 4 números!")
-            else:
-                pd.DataFrame([{"nome": novo_nome, "senha": nova_senha}]).to_csv(ARQUIVO_CREDENCIAIS, index=False)
-                st.sidebar.success("Administrador configurado com sucesso!")
-                st.rerun()
-    else:
-        # Carrega credenciais registradas
-        cred_df = pd.read_csv(ARQUIVO_CREDENCIAIS)
-        admin_nome_salvo = str(cred_df.iloc[0]["nome"])
-        admin_senha_salva = str(cred_df.iloc[0]["senha"])
-        
-        st.sidebar.info(f"Administrador: {admin_nome_salvo}")
-        nome_input = st.sidebar.text_input("Digite seu Nome:", key="login_nome").strip()
-        senha_input = st.sidebar.text_input("Senha de 4 dígitos:", type="password", max_chars=4, key="login_senha").strip()
-        
-        if nome_input.lower() == admin_nome_salvo.lower() and senha_input == admin_senha_salva:
-            st.sidebar.success(f"Bem-vindo, {admin_nome_salvo}! Edição liberada.")
-            est_bloqueado = False
-        else:
-            if nome_input != "" or senha_input != "":
-                st.sidebar.error("Nome ou Senha incorretos!")
-            est_bloqueado = True
+# Se o usuário já fez login nesta sessão, não mostra mais os campos de texto
+if st.session_state.autenticado:
+    st.sidebar.success(f"🟢 Seja bem-vindo, {st.session_state.nome_usuario}!")
+    if st.sidebar.button("🚪 Sair do Modo Admin"):
+        st.session_state.autenticado = False
+        st.session_state.nome_usuario = ""
+        st.rerun()
+    est_bloqueado = False
 else:
-    st.sidebar.warning("Modo Convidado: Alterações desabilitadas.")
+    modo_acesso = st.sidebar.selectbox("Tipo de Usuário:", ["👁️ Convidado (Leitura)", "⚡ Administrador (Editor)"])
+    
+    if modo_acesso == "⚡ Administrador (Editor)":
+        if not admin_existe:
+            st.sidebar.warning("🚨 Nenhum administrador cadastrado!")
+            st.sidebar.subheader("Cadastro do Administrador")
+            novo_nome = st.sidebar.text_input("Seu Nome:", key="reg_nome").strip()
+            nova_senha = st.sidebar.text_input("Senha (4 dígitos):", type="password", max_chars=4, key="reg_senha").strip()
+            
+            if st.sidebar.button("💾 Efetuar Primeiro Cadastro"):
+                if not novo_nome or len(nova_senha) != 4 or not nova_senha.isdigit():
+                    st.sidebar.error("Insira um nome e uma senha válida de 4 números!")
+                else:
+                    pd.DataFrame([{"nome": novo_nome, "senha": nova_senha}]).to_csv(ARQUIVO_CREDENCIAIS, index=False)
+                    st.session_state.autenticado = True
+                    st.session_state.nome_usuario = novo_nome
+                    st.success("Cadastro realizado!")
+                    st.rerun()
+        else:
+            # Carrega dados do único administrador do sistema
+            cred_df = pd.read_csv(ARQUIVO_CREDENCIAIS)
+            admin_nome_salvo = str(cred_df.iloc[0]["nome"])
+            admin_senha_salva = str(cred_df.iloc[0]["senha"])
+            
+            nome_input = st.sidebar.text_input("Nome de Usuário:", key="login_nome").strip()
+            senha_input = st.sidebar.text_input("Senha de 4 dígitos:", type="password", max_chars=4, key="login_senha").strip()
+            
+            if st.sidebar.button("🔓 Efetuar Login"):
+                if nome_input.lower() == admin_nome_salvo.lower() and senha_input == admin_senha_salva:
+                    st.session_state.autenticado = True
+                    st.session_state.nome_usuario = admin_nome_salvo
+                    st.rerun()
+                else:
+                    st.sidebar.error("Usuário ou Senha incorretos!")
+    
+    st.sidebar.info("Modo Convidado ativo por padrão.")
     est_bloqueado = True
 
 st.sidebar.markdown("---")
 
 # ==========================================
-# 📥 CADASTRO E ATUALIZAÇÃO (BLOQUEÁVEL)
+# 📥 CADASTRO E ATUALIZAÇÃO (COMPORTAMENTO CONDICIONAL)
 # ==========================================
 st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
 with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
@@ -141,7 +155,7 @@ if botao_salvar and not est_bloqueado:
 st.sidebar.markdown("---")
 
 # ==========================================
-# 🗑️ REMOVER AMOSTRAS (BLOQUEÁVEL)
+# 🗑️ REMOVER AMOSTRAS (COMPORTAMENTO CONDICIONAL)
 # ==========================================
 st.sidebar.header("🗑️ Remover Múltiplas Amostras")
 deletar_ambiente = st.sidebar.selectbox("1. Escolha o Ambiente:", [""] + list(df['Ambiente_Origem'].unique()), disabled=est_bloqueado)
@@ -162,20 +176,9 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("""<div class="dev-box"><strong style='color: #00e676; font-size: 14px;'>💻 DESENVOLVEDOR DO SISTEMA</strong><br><span style='font-size: 16px; font-weight: bold;'>Thiago Araújo de Vasconcelos</span><br><span style='color: #a3a8b4; font-size: 12px;'>Plataforma Edáfica de Análise Ecológica</span></div>""", unsafe_allow_html=True)
 
 # ==========================================
-# 📊 CONTEÚDO PRINCIPAL (IGUAL PARA TODOS)
+# 📊 CONTEÚDO PRINCIPAL (EXIBIÇÃO INCONDICIONAL)
 # ==========================================
 st.title("🌱 Plataforma de Organização e Análise de Solo")
 st.subheader("Cadastro Livre de Amostras e Comparação de Ambientes")
 st.markdown("---")
 
-aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Painel de Comparação Gráfica"])
-
-with aba_geral:
-    st.write("### Painel Geral de Atributos do Solo")
-    ambientes_disponiveis = df['Ambiente_Origem'].unique() if not df.empty else ["NENHUM"]
-    ambiente_sel = st.selectbox("Escolha o Ambiente:", ambientes_disponiveis)
-    df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel] if not df.empty else pd.DataFrame()
-    col1, col2, col3, col4 = st.columns(4)
-    if not df_filtrado.empty:
-        col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
-        col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
