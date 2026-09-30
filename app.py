@@ -17,159 +17,165 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 🔐 MECÂNICA DE CONTROLE DE ACESSO
-# ==========================================
-if "conectado" not in st.session_state:
-    st.session_state.conectado = False
-if "modo_convidado" not in st.session_state:
-    st.session_state.modo_convidado = False
+ARQUIVO_BANCO = "banco_solo.csv"
+ARQUIVO_CREDENCIAIS = ".env_admin.csv"
+COLUNAS_ESPERADAS = ['Ambiente_Origem', 'ID_Parcela', 'pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
 
-# TELA DE ENTRADA (Bloqueia a plataforma até escolher uma opção)
-if not st.session_state.conectado and not st.session_state.modo_convidado:
-    st.title("🌱 Plataforma Edáfica")
-    st.subheader("Controle de Acesso")
-    st.markdown("---")
-    
-    aba_login, aba_convidado = st.tabs(["🔒 Fazer Login (Editor)", "👁️ Entrar como Convidado"])
-    
-    with aba_login:
-        st.write("Insira as credenciais administrativas para atualizar ou remover dados do solo.")
-        usuario = st.text_input("Usuário Admin")
-        senha = st.text_input("Senha Admin", type="password")
-        if st.button("Confirmar Login"):
-            # Você pode alterar o usuário e a senha abaixo para os que preferir
-            if usuario == "admin" and senha == "admin123":
-                st.session_state.conectado = True
-                st.rerun()
+def inicializar_banco(forcar=False):
+    if forcar or not os.path.exists(ARQUIVO_BANCO):
+        np.random.seed(42)
+        dados = {
+            'Ambiente_Origem': ['ÁREA A (SAVANA)'] * 20 + ['ÁREA B (FLORESTA)'] * 20,
+            'ID_Parcela': [f"P-{i:02d}" for i in range(1, 21)] * 2,
+            'pH': np.round(np.concatenate([np.random.uniform(4.2, 5.5, 20), np.random.uniform(3.8, 4.8, 20)]), 2),
+            'Condutividade (µS/cm)': np.round(np.concatenate([np.random.uniform(10, 50, 20), np.random.uniform(40, 120, 20)]), 2),
+            'Argila (%)': np.round(np.concatenate([np.random.uniform(5, 25, 20), np.random.uniform(30, 65, 20)]), 2),
+            'Materia_Organica (%)': np.round(np.concatenate([np.random.uniform(1.2, 3.0, 20), np.random.uniform(3.5, 7.0, 20)]), 2),
+            'Altitude (m)': np.round(np.concatenate([np.random.uniform(120, 350, 20), np.random.uniform(80, 200, 20)]), 1)
+        }
+        pd.DataFrame(dados).to_csv(ARQUIVO_BANCO, index=False)
+
+inicializar_banco()
+
+try:
+    df = pd.read_csv(ARQUIVO_BANCO)
+    if not all(col in df.columns for col in COLUNAS_ESPERADAS) or df.empty:
+        raise ValueError()
+except:
+    inicializar_banco(forcar=True)
+    df = pd.read_csv(ARQUIVO_BANCO)
+
+# Verificação de existência do Administrador único
+admin_existe = os.path.exists(ARQUIVO_CREDENCIAIS)
+
+# ==========================================
+# 🔑 SELETOR DE PERMISSÃO NA BARRA LATERAL
+# ==========================================
+st.sidebar.header("🔑 Controle de Acesso")
+modo_acesso = st.sidebar.selectbox("Tipo de Usuário:", ["👁️ Convidado (Leitura)", "⚡ Administrador (Editor)"])
+
+est_bloqueado = True
+
+if modo_acesso == "⚡ Administrador (Editor)":
+    if not admin_existe:
+        st.sidebar.warning("🚨 Nenhum administrador cadastrado!")
+        st.sidebar.subheader("Configure o Administrador Único")
+        novo_nome = st.sidebar.text_input("Seu Nome:", key="reg_nome").strip()
+        nova_senha = st.sidebar.text_input("Senha (4 dígitos numéricos):", type="password", max_chars=4, key="reg_senha").strip()
+        
+        if st.sidebar.button("💾 Registrar como Administrador"):
+            if not novo_nome or len(nova_senha) != 4 or not nova_senha.isdigit():
+                st.sidebar.error("Por favor, insira um nome e uma senha válida de exatamente 4 números!")
             else:
-                st.error("Usuário ou senha incorretos.")
-                
-    with aba_convidado:
-        st.write("No modo convidado você poderá visualizar todos os dados e gráficos, mas os recursos de edição e exclusão estarão ocultos.")
-        if st.button("Acessar como Convidado"):
-            st.session_state.modo_convidado = True
+                pd.DataFrame([{"nome": novo_nome, "senha": nova_senha}]).to_csv(ARQUIVO_CREDENCIAIS, index=False)
+                st.sidebar.success("Administrador configurado com sucesso!")
+                st.rerun()
+    else:
+        # Carrega credenciais registradas
+        cred_df = pd.read_csv(ARQUIVO_CREDENCIAIS)
+        admin_nome_salvo = str(cred_df.iloc[0]["nome"])
+        admin_senha_salva = str(cred_df.iloc[0]["senha"])
+        
+        st.sidebar.info(f"Administrador: {admin_nome_salvo}")
+        nome_input = st.sidebar.text_input("Digite seu Nome:", key="login_nome").strip()
+        senha_input = st.sidebar.text_input("Senha de 4 dígitos:", type="password", max_chars=4, key="login_senha").strip()
+        
+        if nome_input.lower() == admin_nome_salvo.lower() and senha_input == admin_senha_salva:
+            st.sidebar.success(f"Bem-vindo, {admin_nome_salvo}! Edição liberada.")
+            est_bloqueado = False
+        else:
+            if nome_input != "" or senha_input != "":
+                st.sidebar.error("Nome ou Senha incorretos!")
+            est_bloqueado = True
+else:
+    st.sidebar.warning("Modo Convidado: Alterações desabilitadas.")
+    est_bloqueado = True
+
+st.sidebar.markdown("---")
+
+# ==========================================
+# 📥 CADASTRO E ATUALIZAÇÃO (BLOQUEÁVEL)
+# ==========================================
+st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
+with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
+    novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...", disabled=est_bloqueado).strip().upper()
+    nova_parcela = st.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...", disabled=est_bloqueado).strip().upper()
+    st.markdown("---")
+    input_ph = st.text_input("pH do Solo:", value="4.50", disabled=est_bloqueado).strip()
+    input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00", disabled=est_bloqueado).strip()
+    input_argila = st.text_input("Teor de Argila (%):", value="15.00", disabled=est_bloqueado).strip()
+    input_mo = st.text_input("Matéria Orgânica (%):", value="2.00", disabled=est_bloqueado).strip()
+    input_altitude = st.text_input("Altitude do Ponto (m):", value="150", disabled=est_bloqueado).strip()
+    botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados", disabled=est_bloqueado)
+
+if botao_salvar and not est_bloqueado:
+    if not novo_ambiente or not nova_parcela:
+        st.sidebar.error("Preencha o Ambiente de Origem e o ID da Parcela!")
+    else:
+        try:
+            v_ph = float(input_ph.replace(',', '.'))
+            v_cond = float(input_condutividade.replace(',', '.'))
+            v_arg = float(input_argila.replace(',', '.'))
+            v_mo = float(input_mo.replace(',', '.'))
+            v_alt = float(input_altitude.replace(',', '.'))
+            if not (0 <= v_ph <= 14) or not (0 <= v_arg <= 100) or not (0 <= v_mo <= 100):
+                st.sidebar.error("Erro: Valores fora dos limites permitidos!")
+            else:
+                existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
+                if existe_registro:
+                    idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
+                    df.loc[idx, 'pH'] = np.round(v_ph, 2)
+                    df.loc[idx, 'Condutividade (µS/cm)'] = np.round(v_cond, 2)
+                    df.loc[idx, 'Argila (%)'] = np.round(v_arg, 2)
+                    df.loc[idx, 'Materia_Organica (%)'] = np.round(v_mo, 2)
+                    df.loc[idx, 'Altitude (m)'] = np.round(v_alt, 1)
+                else:
+                    nova_linha = pd.DataFrame([{'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 'pH': np.round(v_ph, 2), 'Condutividade (µS/cm)': np.round(v_cond, 2), 'Argila (%)': np.round(v_arg, 2), 'Materia_Organica (%)': np.round(v_mo, 2), 'Altitude (m)': np.round(v_alt, 1)}])
+                    df = pd.concat([df, nova_linha], ignore_index=True)
+                df.to_csv(ARQUIVO_BANCO, index=False)
+                st.sidebar.success("Dados salvos!")
+                st.rerun()
+        except ValueError:
+            st.sidebar.error("Erro: Preencha apenas números válidos!")
+
+st.sidebar.markdown("---")
+
+# ==========================================
+# 🗑️ REMOVER AMOSTRAS (BLOQUEÁVEL)
+# ==========================================
+st.sidebar.header("🗑️ Remover Múltiplas Amostras")
+deletar_ambiente = st.sidebar.selectbox("1. Escolha o Ambiente:", [""] + list(df['Ambiente_Origem'].unique()), disabled=est_bloqueado)
+
+if deletar_ambiente != "" and not est_bloqueado:
+    parcelas_disponiveis = df[df['Ambiente_Origem'] == deletar_ambiente]['ID_Parcela'].unique()
+    parcelas_selecionadas = st.sidebar.multiselect("2. Selecione as parcelas:", options=parcelas_disponiveis)
+    if st.sidebar.button("❌ Excluir Selecionadas"):
+        if not parcelas_selecionadas:
+            st.sidebar.warning("Selecione pelo menos uma parcela!")
+        else:
+            df = df[~((df['Ambiente_Origem'] == deletar_ambiente) & (df['ID_Parcela'].isin(parcelas_selecionadas)))]
+            df.to_csv(ARQUIVO_BANCO, index=False)
+            st.sidebar.success("Removidas com sucesso!")
             st.rerun()
 
-# SE LIBERADO, EXECUTA A PLATAFORMA INTEGRALMENTE
-else:
-    # Botão de Logout adicionado no topo da barra lateral para ambos os modos
-    if st.sidebar.button("🚪 Sair / Trocar de Conta"):
-        st.session_state.conectado = False
-        st.session_state.modo_convidado = False
-        st.rerun()
-    st.sidebar.markdown("---")
+st.sidebar.markdown("---")
+st.sidebar.markdown("""<div class="dev-box"><strong style='color: #00e676; font-size: 14px;'>💻 DESENVOLVEDOR DO SISTEMA</strong><br><span style='font-size: 16px; font-weight: bold;'>Thiago Araújo de Vasconcelos</span><br><span style='color: #a3a8b4; font-size: 12px;'>Plataforma Edáfica de Análise Ecológica</span></div>""", unsafe_allow_html=True)
 
-    ARQUIVO_BANCO = "banco_solo.csv"
-    COLUNAS_ESPERADAS = ['Ambiente_Origem', 'ID_Parcela', 'pH', 'Condutividade (µS/cm)', 'Argila (%)', 'Materia_Organica (%)', 'Altitude (m)']
+# ==========================================
+# 📊 CONTEÚDO PRINCIPAL (IGUAL PARA TODOS)
+# ==========================================
+st.title("🌱 Plataforma de Organização e Análise de Solo")
+st.subheader("Cadastro Livre de Amostras e Comparação de Ambientes")
+st.markdown("---")
 
-    def inicializar_banco(forcar=False):
-        if forcar or not os.path.exists(ARQUIVO_BANCO):
-            np.random.seed(42)
-            dados = {
-                'Ambiente_Origem': ['ÁREA A (SAVANA)'] * 20 + ['ÁREA B (FLORESTA)'] * 20,
-                'ID_Parcela': [f"P-{i:02d}" for i in range(1, 21)] * 2,
-                'pH': np.round(np.concatenate([np.random.uniform(4.2, 5.5, 20), np.random.uniform(3.8, 4.8, 20)]), 2),
-                'Condutividade (µS/cm)': np.round(np.concatenate([np.random.uniform(10, 50, 20), np.random.uniform(40, 120, 20)]), 2),
-                'Argila (%)': np.round(np.concatenate([np.random.uniform(5, 25, 20), np.random.uniform(30, 65, 20)]), 2),
-                'Materia_Organica (%)': np.round(np.concatenate([np.random.uniform(1.2, 3.0, 20), np.random.uniform(3.5, 7.0, 20)]), 2),
-                'Altitude (m)': np.round(np.concatenate([np.random.uniform(120, 350, 20), np.random.uniform(80, 200, 20)]), 1)
-            }
-            pd.DataFrame(dados).to_csv(ARQUIVO_BANCO, index=False)
+aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Painel de Comparação Gráfica"])
 
-    inicializar_banco()
-
-    try:
-        df = pd.read_csv(ARQUIVO_BANCO)
-        if not all(col in df.columns for col in COLUNAS_ESPERADAS) or df.empty:
-            raise ValueError()
-    except:
-        inicializar_banco(forcar=True)
-        df = pd.read_csv(ARQUIVO_BANCO)
-
-    st.title("🌱 Plataforma de Organização e Análise de Solo")
-    st.subheader("Cadastro Livre de Amostras e Comparação de Ambientes")
-    st.markdown("---")
-
-    # ==========================================
-    # ⚙️ TRAVA DOS RECURSOS DO ADMINISTRADOR
-    # ==========================================
-    if st.session_state.conectado:
-        st.sidebar.success("⚡ Modo Administrador Ativo")
-        st.sidebar.header("📥 Cadastrar ou Atualizar Amostra")
-        with st.sidebar.form(key="formulario_solo", clear_on_submit=True):
-            novo_ambiente = st.text_input("Ambiente de Origem:", placeholder="Ex: PEMA, Flona...").strip().upper()
-            nova_parcela = st.text_input("ID/Código da Parcela:", placeholder="Ex: R-01...").strip().upper()
-            st.markdown("---")
-            input_ph = st.text_input("pH do Solo:", value="4.50").strip()
-            input_condutividade = st.text_input("Condutividade (µS/cm):", value="25.00").strip()
-            input_argila = st.text_input("Teor de Argila (%):", value="15.00").strip()
-            input_mo = st.text_input("Matéria Orgânica (%):", value="2.00").strip()
-            input_altitude = st.text_input("Altitude do Ponto (m):", value="150").strip()
-            botao_salvar = st.form_submit_button(label="💾 Salvar / Atualizar Dados")
-
-        if botao_salvar:
-            if not novo_ambiente or not nova_parcela:
-                st.sidebar.error("Preencha o Ambiente de Origem e o ID da Parcela!")
-            else:
-                try:
-                    v_ph = float(input_ph.replace(',', '.'))
-                    v_cond = float(input_condutividade.replace(',', '.'))
-                    v_arg = float(input_argila.replace(',', '.'))
-                    v_mo = float(input_mo.replace(',', '.'))
-                    v_alt = float(input_altitude.replace(',', '.'))
-                    if not (0 <= v_ph <= 14) or not (0 <= v_arg <= 100) or not (0 <= v_mo <= 100):
-                        st.sidebar.error("Erro: Valores fora dos limites permitidos!")
-                    else:
-                        existe_registro = ((df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)).any()
-                        if existe_registro:
-                            idx = df[(df['Ambiente_Origem'] == novo_ambiente) & (df['ID_Parcela'] == nova_parcela)].index
-                            df.loc[idx, 'pH'] = np.round(v_ph, 2)
-                            df.loc[idx, 'Condutividade (µS/cm)'] = np.round(v_cond, 2)
-                            df.loc[idx, 'Argila (%)'] = np.round(v_arg, 2)
-                            df.loc[idx, 'Materia_Organica (%)'] = np.round(v_mo, 2)
-                            df.loc[idx, 'Altitude (m)'] = np.round(v_alt, 1)
-                        else:
-                            nova_linha = pd.DataFrame([{'Ambiente_Origem': novo_ambiente, 'ID_Parcela': nova_parcela, 'pH': np.round(v_ph, 2), 'Condutividade (µS/cm)': np.round(v_cond, 2), 'Argila (%)': np.round(v_arg, 2), 'Materia_Organica (%)': np.round(v_mo, 2), 'Altitude (m)': np.round(v_alt, 1)}])
-                            df = pd.concat([df, nova_linha], ignore_index=True)
-                        df.to_csv(ARQUIVO_BANCO, index=False)
-                        st.sidebar.success("Dados salvos!")
-                        st.rerun()
-                except ValueError:
-                    st.sidebar.error("Erro: Preencha apenas números válidos!")
-
-        st.sidebar.markdown("---")
-        st.sidebar.header("🗑️ Remover Múltiplas Amostras")
-        deletar_ambiente = st.sidebar.selectbox("1. Escolha o Ambiente:", [""] + list(df['Ambiente_Origem'].unique()))
-
-        if deletar_ambiente != "":
-            parcelas_disponiveis = df[df['Ambiente_Origem'] == deletar_ambiente]['ID_Parcela'].unique()
-            parcelas_selecionadas = st.sidebar.multiselect("2. Selecione as parcelas:", options=parcelas_disponiveis)
-            if st.sidebar.button("❌ Excluir Selecionadas"):
-                if not parcelas_selecionadas:
-                    st.sidebar.warning("Selecione pelo menos uma parcela!")
-                else:
-                    df = df[~((df['Ambiente_Origem'] == deletar_ambiente) & (df['ID_Parcela'].isin(parcelas_selecionadas)))]
-                    df.to_csv(ARQUIVO_BANCO, index=False)
-                    st.sidebar.success("Removidas com sucesso!")
-                    st.rerun()
-
-    # SE FOR CONVIDADO, APENAS EXIBE O AVISO NA LATERAL
-    elif st.session_state.modo_convidado:
-        st.sidebar.warning("👁️ Modo Convidado Ativo\n\nRecursos de edição e cadastro estão desabilitados.")
-
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("""<div class="dev-box"><strong style='color: #00e676; font-size: 14px;'>💻 DESENVOLVEDOR DO SISTEMA</strong><br><span style='font-size: 16px; font-weight: bold;'>Thiago Araújo de Vasconcelos</span><br><span style='color: #a3a8b4; font-size: 12px;'>Plataforma Edáfica de Análise Ecológica</span></div>""", unsafe_allow_html=True)
-
-    aba_geral, aba_comparativo = st.tabs(["📊 Visão Geral dos Dados", "📊 Painel de Comparação Gráfica"])
-
-    with aba_geral:
-        st.write("### Painel Geral de Atributos do Solo")
-        ambientes_disponiveis = df['Ambiente_Origem'].unique() if not df.empty else ["NENHUM"]
-        ambiente_sel = st.selectbox("Escolha o Ambiente:", ambientes_disponiveis)
-        df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel] if not df.empty else pd.DataFrame()
-        col1, col2, col3, col4 = st.columns(4)
-        if not df_filtrado.empty:
-            col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
-            col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
-            col3.metric(label="Teor Médio de Argila", value=f"{df_filtrado['Argila (%)'].mean():.2f}%")
+with aba_geral:
+    st.write("### Painel Geral de Atributos do Solo")
+    ambientes_disponiveis = df['Ambiente_Origem'].unique() if not df.empty else ["NENHUM"]
+    ambiente_sel = st.selectbox("Escolha o Ambiente:", ambientes_disponiveis)
+    df_filtrado = df[df['Ambiente_Origem'] == ambiente_sel] if not df.empty else pd.DataFrame()
+    col1, col2, col3, col4 = st.columns(4)
+    if not df_filtrado.empty:
+        col1.metric(label="Média de pH", value=f"{df_filtrado['pH'].mean():.2f}")
+        col2.metric(label="Média de Condutividade", value=f"{df_filtrado['Condutividade (µS/cm)'].mean():.2f} µS/cm")
